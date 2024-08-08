@@ -162,12 +162,26 @@ DH Parameters: (csv)
 
 limits:
 arm_1_joint: <limit effort="43.0" lower="0.0" upper="2.748893571891069" velocity="1.95"/>
+    <safety_controller k_position="20" k_velocity="20" soft_lower_limit="0.07" soft_upper_limit="2.678893571891069"/>
+
 arm_2_joint: <limit effort="43.0" lower="-1.5707963267948966" upper="1.090830782496456" velocity="1.95"/>
+    <safety_controller k_position="20" k_velocity="20" soft_lower_limit="-1.5007963267948965" soft_upper_limit="1.020830782496456"/>
+
 arm_3_joint: <limit effort="26" lower="-3.5342917352885173" upper="1.5707963267948966" velocity="2.35"/>
+    <safety_controller k_position="20" k_velocity="20" soft_lower_limit="-3.4642917352885174" soft_upper_limit="1.5007963267948965"/>
+
 arm_4_joint: <limit effort="26" lower="-0.39269908169872414" upper="2.356194490192345" velocity="2.35"/>
+    <safety_controller k_position="20" k_velocity="20" soft_lower_limit="-0.32269908169872413" soft_upper_limit="2.286194490192345"/>
+
 arm_5_joint: <limit effort="3" lower="-2.0943951023931953" upper="2.0943951023931953" velocity="1.95"/>
-arm_6_joint: <limit effort="6.6" lower="-1.413716694115407" upper="1.413716694115407" velocity="1.76"/>
+    <safety_controller k_position="20" k_velocity="20" soft_lower_limit="-2.0743951023931952" soft_upper_limit="2.0743951023931952"/>
+
+arm_6_joint: <limit effort="6.6" lower="-1.413716694115407" upper="1.413716694115407" velocity="1.76"/>    <safety_controller k_position="20" k_velocity="20" soft_lower_limit="-1.3937166941154069" soft_upper_limit="1.3937166941154069"/>
+    <safety_controller k_position="20" k_velocity="20" soft_lower_limit="-1.3937166941154069" soft_upper_limit="1.3937166941154069"/>
+
 arm_7_joint: <limit effort="6.6" lower="-2.0943951023931953" upper="2.0943951023931953" velocity="1.76"/>
+    <safety_controller k_position="20" k_velocity="20" soft_lower_limit="-2.0743951023931952" soft_upper_limit="2.0743951023931952"/>
+
 arm_tool_joint: fixed
 
 
