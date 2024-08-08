@@ -7,17 +7,18 @@ using namespace std::placeholders;
 using FollowJointTrajectory = control_msgs::action::FollowJointTrajectory;
 using GoalHandleFollowJointTrajectory = rclcpp_action::ClientGoalHandle<FollowJointTrajectory>;
 
-
-//topic needs fix, feedback needs fix and need to find a way to feed different motions to the robot (maybe a motions library)
+// ros2 launch tiago_gazebo tiago_gazebo.launch.py is_public_sim:=True [arm_type:=no-arm]
+// need to find a way to feed different motions to the robot (maybe a motions library)
 class TrajectoryActionClient : public rclcpp::Node
 {
 public:
 
     TrajectoryActionClient() : Node("trajectory_action_client")
     {
+        RCLCPP_INFO(this->get_logger(), "IN Contstructor");
         this->tiago_control_client_ = rclcpp_action::create_client<FollowJointTrajectory>(
             this,
-            "/tiago_arm_controller/follow_joint_trajectory");
+            "/arm_controller/follow_joint_trajectory");
 
         this->send_goal();
     }
@@ -37,10 +38,13 @@ private:
         //create the goal
         auto goal_msg = FollowJointTrajectory::Goal();
         goal_msg.trajectory.joint_names = {"arm_1_joint", "arm_2_joint", "arm_3_joint", "arm_4_joint", "arm_5_joint", "arm_6_joint", "arm_7_joint"};
-
+        //                                  0.070-2.679 , -1.501-1.021 , -0.323-2.286 , -2.073-2.074 , -1.394-1.394 , -1.394-1.394 , -2.074-2.074
         trajectory_msgs::msg::JointTrajectoryPoint point;
-        point.positions = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-        point.time_from_start = rclcpp::Duration::from_seconds(2.0);
+
+        //                  1    2    3    4    5    6    7
+        point.positions = {2.0, -1.0, -0.3, -1.0, -1.0, -1.0, -2.0};
+        point.time_from_start = rclcpp::Duration::from_seconds(4.0);
+        //point.velocities = 
 
         goal_msg.trajectory.points.push_back(point);
         
@@ -52,7 +56,7 @@ private:
         send_goal_options.goal_response_callback = 
             std::bind(&TrajectoryActionClient::goal_response_callback, this, _1);
         send_goal_options.feedback_callback = 
-            std::bind(&TrajectoryActionClient::feedback_callback, this, _1, _2);
+            std::bind(&TrajectoryActionClient::goal_feedback_callback, this, _1, _2);
 
 
         //send the goal
@@ -74,9 +78,11 @@ private:
     }
 
     //callback to receive feedback during goal execution
-    void feedback_callback(GoalHandleFollowJointTrajectory::SharedPtr, const std::shared_ptr<const FollowJointTrajectory::Feedback> feedback)
+    void goal_feedback_callback(const GoalHandleFollowJointTrajectory::SharedPtr &goal_handle, const std::shared_ptr<const FollowJointTrajectory::Feedback> feedback)
     {
-        RCLCPP_INFO(this->get_logger(), "Received feedback");
+        (void) goal_handle;
+        (void) feedback;
+        //RCLCPP_INFO(this->get_logger(), "Received feedback");
     }
 
     void goal_result_callback(const GoalHandleFollowJointTrajectory::WrappedResult &result)

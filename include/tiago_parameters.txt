@@ -1,0 +1,186 @@
+URDF Tree:
+torso_lift_link
+└── arm_1_joint
+    └── arm_1_link
+        └── arm_2_joint
+            └── arm_2_link
+                └── arm_3_joint
+                    └── arm_3_link
+                        └── arm_4_joint
+                            └── arm_4_link
+                                └── arm_5_joint
+                                    └── arm_5_link
+                                        └── arm_6_joint
+                                            └── arm_6_link
+                                                └── arm_7_joint
+                                                    └── arm_7_link
+                                                        └── arm_tool_joint
+                                                            └── arm_tool_link
+Joint Info:
+{'arm_1_joint': {'axis': array([0., 0., 1.]),
+                 'child': 'arm_1_link',
+                 'dh': array([0., 0., 0., 0.]),
+                 'parent': 'torso_lift_link',
+                 'rpy': array([ 0.        ,  0.        , -1.57079633]),
+                 'xyz': array([ 0.15505,  0.014  , -0.151  ])},
+ 'arm_2_joint': {'axis': array([0., 0., 1.]),
+                 'child': 'arm_2_link',
+                 'dh': array([0., 0., 0., 0.]),
+                 'parent': 'arm_1_link',
+                 'rpy': array([1.57079633, 0.        , 0.        ]),
+                 'xyz': array([ 0.125 ,  0.0195, -0.031 ])},
+ 'arm_3_joint': {'axis': array([0., 0., 1.]),
+                 'child': 'arm_3_link',
+                 'dh': array([0., 0., 0., 0.]),
+                 'parent': 'arm_2_link',
+                 'rpy': array([-1.57079633,  0.        ,  1.57079633]),
+                 'xyz': array([ 0.0895,  0.    , -0.0015])},
+ 'arm_4_joint': {'axis': array([0., 0., 1.]),
+                 'child': 'arm_4_link',
+                 'dh': array([0., 0., 0., 0.]),
+                 'parent': 'arm_3_link',
+                 'rpy': array([-1.57079633, -1.57079633,  0.        ]),
+                 'xyz': array([-0.02 , -0.027, -0.222])},
+ 'arm_5_joint': {'axis': array([0., 0., 1.]),
+                 'child': 'arm_5_link',
+                 'dh': array([0., 0., 0., 0.]),
+                 'parent': 'arm_4_link',
+                 'rpy': array([ 1.57079633, -1.57079633, -1.57079633]),
+                 'xyz': array([-0.162,  0.02 ,  0.027])},
+ 'arm_6_joint': {'axis': array([0., 0., 1.]),
+                 'child': 'arm_6_link',
+                 'dh': array([0., 0., 0., 0.]),
+                 'parent': 'arm_5_link',
+                 'rpy': array([ 0.        , -1.57079633, -1.57079633]),
+                 'xyz': array([0.  , 0.  , 0.15])},
+ 'arm_7_joint': {'axis': array([0., 0., 1.]),
+                 'child': 'arm_7_link',
+                 'dh': array([0., 0., 0., 0.]),
+                 'parent': 'arm_6_link',
+                 'rpy': array([1.57079633, 0.        , 1.57079633]),
+                 'xyz': array([0., 0., 0.])},
+ 'arm_tool_joint': {'axis': array([1, 0, 0]),
+                    'child': 'arm_tool_link',
+                    'dh': array([0., 0., 0., 0.]),
+                    'parent': 'arm_7_link',
+                    'rpy': array([ 1.57079633, -1.57079633,  3.14159265]),
+                    'xyz': array([0.   , 0.   , 0.046])}}
+Calculate world tfs:
+
+get tf from  torso_lift_link  to  arm_1_link
+
+get tf from  arm_1_link  to  arm_2_link
+
+get tf from  arm_2_link  to  arm_3_link
+
+get tf from  arm_3_link  to  arm_4_link
+
+get tf from  arm_4_link  to  arm_5_link
+
+get tf from  arm_5_link  to  arm_6_link
+
+get tf from  arm_6_link  to  arm_7_link
+
+get tf from  arm_7_link  to  arm_tool_link
+calculate_dh_params
+process_order = 
+ ['torso_lift_link', 'arm_1_joint', 'arm_1_link', 'arm_2_joint', 'arm_2_link', 'arm_3_joint', 'arm_3_link', 'arm_4_joint', 'arm_4_link', 'arm_5_joint', 'arm_5_link', 'arm_6_joint', 'arm_6_link', 'arm_7_joint', 'arm_7_link', 'arm_tool_joint', 'arm_tool_link']
+
+
+process dh params for  arm_1_link
+[0. 0. 1.]
+  Process parallel case.
+[-0.151       0.09004926  0.15568077  0.        ]
+
+
+process dh params for  arm_2_link
+[-9.95948304e-01  8.99276121e-02  6.12323400e-17]
+  Process skew case.
+[-0.031      -1.66084559  0.125       1.57079633]
+
+
+process dh params for  arm_3_link
+[-1.00000000e+00  6.12323400e-17  1.55593171e-16]
+  Process intersection case.
+[[ 6.12323400e-17 -1.44734883e-16 -1.00000000e+00  8.95000000e-02]
+ [ 1.00000000e+00  1.23259516e-32  6.12323400e-17  0.00000000e+00]
+ [ 0.00000000e+00 -1.00000000e+00  1.55593171e-16 -2.10000000e-02]
+ [ 0.00000000e+00  0.00000000e+00  0.00000000e+00  1.00000000e+00]]
+-1.5707963267948966
+[-0.021      -1.57079633  0.          1.57079633]
+
+
+process dh params for  arm_4_link
+[ 6.12323400e-17 -1.00000000e+00  8.35025429e-17]
+  Process skew case.
+[-0.3115      0.          0.02        1.57079633]
+
+
+process dh params for  arm_5_link
+[ 1.83697020e-16 -1.00000000e+00  3.31284912e-17]
+  Process skew case.
+[ 5.01443357e-17  3.14159265e+00  2.00000000e-02 -1.57079633e+00]
+
+
+process dh params for  arm_6_link
+[ 1.0000000e+00 -6.1232340e-17  3.6739404e-16]
+  Process intersection case.
+[[-3.67394040e-16 -6.12323400e-17  1.00000000e+00 -1.11022302e-16]
+ [ 2.81038488e-17 -1.00000000e+00 -6.12323400e-17  0.00000000e+00]
+ [ 1.00000000e+00  3.89621370e-17  3.67394040e-16  3.12000000e-01]
+ [ 0.00000000e+00  0.00000000e+00  0.00000000e+00  1.00000000e+00]]
+1.5707963267948966
+[0.312      1.57079633 0.         1.57079633]
+
+
+process dh params for  arm_7_link
+[ 8.93361888e-17  1.00000000e+00 -2.44929360e-16]
+  Process intersection case.
+[[-1.00000000e+00  7.39557099e-32  8.93361888e-17  0.00000000e+00]
+ [ 1.00194477e-16  2.44929360e-16  1.00000000e+00  0.00000000e+00]
+ [ 2.46519033e-32  1.00000000e+00 -2.44929360e-16 -1.11022302e-16]
+ [ 0.00000000e+00  0.00000000e+00  0.00000000e+00  1.00000000e+00]]
+0.0
+[-1.11022302e-16 -0.00000000e+00  0.00000000e+00 -1.57079633e+00]
+
+
+process dh params for  arm_tool_link
+[1.50568529e-16 3.06161700e-16 1.00000000e+00]
+  Process collinear case.
+[0.046 0.    0.    0.   ]
+
+DH Parameters: (csv)
+,joint,parent,child,d,theta,r,alpha
+0,arm_1_joint,torso_lift_link,arm_1_link,-0.151,5.159484945153063,0.15568,0.0
+1,arm_2_joint,arm_1_link,arm_2_link,-0.031,-95.15969540430277,0.125,90.0002104591497
+2,arm_3_joint,arm_2_link,arm_3_link,-0.021,-90.0002104591497,0.0,90.0002104591497
+3,arm_4_joint,arm_3_link,arm_4_link,-0.3115,0.0,0.02,90.0002104591497
+4,arm_5_joint,arm_4_link,arm_5_link,0.0,179.99984796050427,0.02,-90.0002104591497
+5,arm_6_joint,arm_5_link,arm_6_link,0.312,90.0002104591497,0.0,90.0002104591497
+6,arm_7_joint,arm_6_link,arm_7_link,-0.0,-0.0,0.0,-90.0002104591497
+7,arm_tool_joint,arm_7_link,arm_tool_link,0.046,0.0,0.0,0.0
+
+limits:
+arm_1_joint: <limit effort="43.0" lower="0.0" upper="2.748893571891069" velocity="1.95"/>
+arm_2_joint: <limit effort="43.0" lower="-1.5707963267948966" upper="1.090830782496456" velocity="1.95"/>
+arm_3_joint: <limit effort="26" lower="-3.5342917352885173" upper="1.5707963267948966" velocity="2.35"/>
+arm_4_joint: <limit effort="26" lower="-0.39269908169872414" upper="2.356194490192345" velocity="2.35"/>
+arm_5_joint: <limit effort="3" lower="-2.0943951023931953" upper="2.0943951023931953" velocity="1.95"/>
+arm_6_joint: <limit effort="6.6" lower="-1.413716694115407" upper="1.413716694115407" velocity="1.76"/>
+arm_7_joint: <limit effort="6.6" lower="-2.0943951023931953" upper="2.0943951023931953" velocity="1.76"/>
+arm_tool_joint: fixed
+
+
+
+DH Parameters: (markdown)
+|    | joint          | parent          | child         |       d |     theta |       r |    alpha |
+|---:|:---------------|:----------------|:--------------|--------:|----------:|--------:|---------:|
+|  0 | arm_1_joint    | torso_lift_link | arm_1_link    | -0.151  |   5.15948 | 0.15568 |   0      |
+|  1 | arm_2_joint    | arm_1_link      | arm_2_link    | -0.031  | -95.1597  | 0.125   |  90.0002 |
+|  2 | arm_3_joint    | arm_2_link      | arm_3_link    | -0.021  | -90.0002  | 0       |  90.0002 |
+|  3 | arm_4_joint    | arm_3_link      | arm_4_link    | -0.3115 |   0       | 0.02    |  90.0002 |
+|  4 | arm_5_joint    | arm_4_link      | arm_5_link    |  0      | 180       | 0.02    | -90.0002 |
+|  5 | arm_6_joint    | arm_5_link      | arm_6_link    |  0.312  |  90.0002  | 0       |  90.0002 |
+|  6 | arm_7_joint    | arm_6_link      | arm_7_link    | -0      |  -0       | 0       | -90.0002 |
+|  7 | arm_tool_joint | arm_7_link      | arm_tool_link |  0.046  |   0       | 0       |   0      |
+
