@@ -15,8 +15,12 @@ find_package(trajectory_msgs REQUIRED)
 add_executable(tiago_controller_node src/tiago_controller_node.cpp)
 ament_target_dependencies(tiago_controller_node rclcpp rclcpp_action control_msgs trajectory_msgs)
 
+add_executable(tiago_controller_node7 src/tiago_controller_node7.cpp)
+ament_target_dependencies(tiago_controller_node7 rclcpp rclcpp_action control_msgs trajectory_msgs)
+
 install(TARGETS
   tiago_controller_node
+  tiago_controller_node7
   DESTINATION lib/${PROJECT_NAME}/
 )
 
