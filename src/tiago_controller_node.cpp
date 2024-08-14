@@ -48,15 +48,15 @@ private:
 
         // An initial Position for the robot tahta min mak H -> robot min 78 cm tahta min 90cm max 207cm
         cago_initial={1.565, 0.939, -0.056, 0.975, 1.738, 0.023, -0.034};  //{-1.1470 0.3418 -2.1480}
-        // cago_reference1={2.679, 0.053, 1.501, 1.158, 0.000, 0.000, 0.000};  {-3.224,-3.47,0.4543}
-        // cago_reference2={0.253, 0.053, -1.666, 1.327, 0.000, 0.000, 0.000}; {-0.6227,-1.749,0.8144}
-        // cago_reference3={0.253, 1.021, -1.371, 1.539, 0.000, 0.000, 0.000};  {-1.742,-1.611,-0.9923}
-        move2={1.5532  ,  1.0298  , -0.2537  ,  1.1005  ,  1.8147   , 0.2033,-0.034}; //-0.6122,0.2041,-2.188
-        //move3={1.3439  ,  0.9616  , -0.3567   , 0.9943  ,  1.6818  ,  0.2681, -0.034}; //-0.6122,0.6122,-2.046
-        move4={1.3137  ,  0.7331  , -0.0235   , 0.7603  ,  1.4722  , -0.0147,-0.034}; //-1.429,1.02,-1.915
-        move5={1.6670  ,  1.1319   , 0.3988    ,1.1053 ,   1.6375  , -0.3858,-0.034};//-2.245,0.2041,-2.212
+        // cago_reference1={2.679, 0.053, 1.501, 1.158, 0.000, 0.000, 0.000};  {-3.224, -3.47, 0.4543} left
+        // cago_reference2={0.253, 0.053, -1.666, 1.327, 0.000, 0.000, 0.000}; {-0.6227, -1.749, 0.8144} right
+        // cago_reference3={0.253, 1.021, -1.371, 1.539, 0.000, 0.000, 0.000};  {-1.742, -1.611, -0.9923} top
+        move2={2.7282  ,  1.4596  , -0.8318 , -0.9923  , 0.000, 0.000, 0.000}; //-2.5737   -3.0398    0.5444
+        move3={-2.7827  ,  1.3185   ,-0.1241  , -0.7627  ,0.000, 0.000, 0.000}; //-1.2730   -2.1793    0.7245
+        move4={-2.8520  ,  1.8910 ,   3.1085  ,  0.2214  , 0.000, 0.000,0.000}; //-1.5075   -1.8952   -0.1339
+        move5={3.0470  ,  2.0082   ,-1.1121 ,  -0.3091 ,  0.000, 0.000,0.000};//-2.1578   -2.3254   -0.2239
         //move6={1.9253  ,  1.1397  ,  0.2383   , 1.0698  ,  1.9624  , -0.2498, -0.034}; //-1.429,-0.6122,-2.485
-        move7={1.5532  ,  1.0298  , -0.2537  ,  1.1005   ,1.8147  ,  0.2033,-0.034}; //-0.6122,0.2041,-2.188
+        //move7={1.5532  ,  1.0298  , -0.2537  ,  1.1005   ,1.8147  ,  0.2033,-0.034}; //-0.6122,0.2041,-2.188
 
         // % Set joint limits for the first joint
 
@@ -73,7 +73,7 @@ private:
         // arm_7_joint: <limit effort="6.6" lower="-2.0943951023931953" upper="2.0943951023931953" velocity="1.76"/>
         // arm_tool_joint: fixed
 
-        //T6 = [0.9897   0.0234   0.1409  -1.1470; -0.1401 -0.0323  0.9896  0.3418;  0.0277 -0.9992  -0.0287  -3.1480;   0    0  0  1.0000]
+        //(reference) T6 = [0.9897   0.0234   0.1409  -1.1470; -0.1401 -0.0323  0.9896  0.3418;  0.0277 -0.9992  -0.0287  -3.1480;   0    0  0  1.0000]
         // T6 =[      
         //     0.9897    0.0234    0.1409   -1.1470;
         //    -0.1401   -0.0323    0.9896    0.3418;
@@ -90,28 +90,32 @@ private:
         p2.time_from_start = rclcpp::Duration::from_seconds(4.0);
         points.push_back(p2);
 
-        // p3.positions=move3;
-        // p3.time_from_start=rclcpp::Duration::from_seconds(6.0);
-        // points.push_back(p3);
+        p3.positions=move3;
+        p3.time_from_start=rclcpp::Duration::from_seconds(6.0);
+        points.push_back(p3);
 
         p4.positions=move4;
-        p4.time_from_start=rclcpp::Duration::from_seconds(6.0);
+        p4.time_from_start=rclcpp::Duration::from_seconds(8.0);
         points.push_back(p4);
 
         p5.positions=move5;
-        p5.time_from_start=rclcpp::Duration::from_seconds(8.0);
+        p5.time_from_start=rclcpp::Duration::from_seconds(10.0);
         points.push_back(p5);
+
+        p2.positions= move2;
+        p2.time_from_start = rclcpp::Duration::from_seconds(12.0);
+        points.push_back(p2);
 
         // p6.positions=move6;
         // p6.time_from_start = rclcpp::Duration::from_seconds(10.0);
         // points.push_back(p6);
 
-        p7.positions=move7;
-        p7.time_from_start = rclcpp::Duration::from_seconds(10.0);
-        points.push_back(p7);
+        // p7.positions=move7;
+        // p7.time_from_start = rclcpp::Duration::from_seconds(12.0);
+        // points.push_back(p7);
 
         p1.positions = cago_initial;
-        p1.time_from_start = rclcpp::Duration::from_seconds(12.0);
+        p1.time_from_start = rclcpp::Duration::from_seconds(14.0);
         points.push_back(p1);
 
         //point.velocities = 
