@@ -46,15 +46,15 @@ private:
         goal_msg.trajectory.joint_names = {"arm_1_joint", "arm_2_joint", "arm_3_joint", "arm_4_joint", "arm_5_joint", "arm_6_joint", "arm_7_joint"};
         std::vector<trajectory_msgs::msg::JointTrajectoryPoint> points;
 
-        // An initial Position for the robot tahta min mak H -> robot min 78 cm tahta min 90cm max 207cm
-        cago_initial={1.565, 0.939, -0.056, 0.975, 1.738, 0.023, -0.034};  //{-1.1470 0.3418 -2.1480}
-        // cago_reference1={2.228, 0.000,0.000,0.000, 0.000, 0.000, 0.000};  {-0.2391, 0.3734 ,-0.04949} left
-        // cago_reference2={0.817, 0.000,0.000,0.000, 0.000, 0.000, 0.000}; {0.4615, 0.4492, 0.4492} right
-        // cago_reference3={1.374, 0.598, 0.000,0.000, 0.000, 0.000, 0.000};  {0.1419, 0.3628, -0.2444} top
-        move2={ -0.8046 ,   2.7079  ,  1.1632  , -2.2441   , 2.6830    ,     0, 0.000}; //0.09184,0.5204,1.186 square starts here
-        move3={ 0.2055  ,  1.9221  , -0.4368 ,  -2.4438  ,  2.6931    ,     0 ,0.000}; //0.09184,0.398,0.08492
-        move4={ 0.1460  ,  2.8171  ,  0.6982  , -0.5330  ,  0.8384    ,     0,0.000}; //0.2143,0.398,0.05292
-        move5={  -0.2163  ,  1.6871   , 0.3538   , 0.9646  , -0.8456     ,    0,0.000};//-0.02041,-0.06122,-0.07396
+        // An initial Position for the robot tahta min mak H -> robot min 78 cm tahta min 90cm max 207cm // imputs calculated using MMeter
+        cago_initial={1.565, 0.939, -0.056, 0.975, 1.738, 0.023, -0.034};  //{-8.485 460.9 57.55} (for 6th frame)
+        // cago_reference1={1.565, 0.939, -0.056, 0.975, 1.738, 0.023, -0.034};  {-8.485 460.9 57.55}
+        // cago_reference2={1.374, 0.775,0.051,0.819, 0.000, 0.000, 0.000};                    {-8.485 460.9 30} 
+        // cago_reference3={1.374, -1.201, -2.928,1.243, 0.000, 0.000, 0.000};                 { 20 460.9 57.55}
+        move2={ -0.0904   , 0.8309 ,  -0.4842  ,  0.1894  , -0.1477  ,       0.0     , 0.000}; //0.2143,0.1531,-0.2846 square starts here
+        move3={ -0.4014  ,  0.9396  , -0.4374  ,  0.4493  , -0.4034   ,      0.0    ,0.000}; //0.1531,0.09184,-0.2675
+        move4={ -1.8189  ,  0.5025  , -0.8551 ,   0.6279  , -0.9173   ,      0.0   ,  0.000}; //0.2143,0.03061,-0.2179
+        move5={ -1.6982   , 1.5740  , -0.1005  ,  0.0258 ,  -0.0150   ,      0.0    ,0.000};//0.2755,0.09184,-0.235
         //move6={1.9253  ,  1.1397  ,  0.2383   , 1.0698  ,  1.9624  , -0.2498, -0.034}; //-1.429,-0.6122,-2.485
         //move7={1.5532  ,  1.0298  , -0.2537  ,  1.1005   ,1.8147  ,  0.2033,-0.034}; //-0.6122,0.2041,-2.188
 
@@ -83,27 +83,27 @@ private:
         trajectory_msgs::msg::JointTrajectoryPoint p1,p2,p3,p4,p5,p6,p7;
         
         p1.positions = cago_initial;
-        p1.time_from_start = rclcpp::Duration::from_seconds(2.0);
+        p1.time_from_start = rclcpp::Duration::from_seconds(3.0);
         points.push_back(p1);
 
         p2.positions= move2;
-        p2.time_from_start = rclcpp::Duration::from_seconds(4.0);
+        p2.time_from_start = rclcpp::Duration::from_seconds(6.0);
         points.push_back(p2);
 
         p3.positions=move3;
-        p3.time_from_start=rclcpp::Duration::from_seconds(6.0);
+        p3.time_from_start=rclcpp::Duration::from_seconds(9.0);
         points.push_back(p3);
 
         p4.positions=move4;
-        p4.time_from_start=rclcpp::Duration::from_seconds(8.0);
+        p4.time_from_start=rclcpp::Duration::from_seconds(12.0);
         points.push_back(p4);
 
         p5.positions=move5;
-        p5.time_from_start=rclcpp::Duration::from_seconds(10.0);
+        p5.time_from_start=rclcpp::Duration::from_seconds(15.0);
         points.push_back(p5);
 
         p2.positions= move2;
-        p2.time_from_start = rclcpp::Duration::from_seconds(12.0);
+        p2.time_from_start = rclcpp::Duration::from_seconds(18.0);
         points.push_back(p2);
 
         // p6.positions=move6;
@@ -115,7 +115,7 @@ private:
         // points.push_back(p7);
 
         p1.positions = cago_initial;
-        p1.time_from_start = rclcpp::Duration::from_seconds(14.0);
+        p1.time_from_start = rclcpp::Duration::from_seconds(21.0);
         points.push_back(p1);
 
         //point.velocities = 
