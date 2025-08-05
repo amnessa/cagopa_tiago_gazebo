@@ -8,6 +8,71 @@
 #include <map>       // Required for std::map
 
 using namespace std::chrono_literals;
+//BIG COMMENTED SECTION PLANNED TO BE ADDED
+// #include <rclcpp/rclcpp.hpp>
+// #include <geometry_msgs/msg/point_stamped.hpp>
+// #include <geometry_msgs/msg/twist.hpp>
+// #include <std_msgs/msg/float64_multi_array.hpp>
+// #include <nav_msgs/msg/odometry.hpp>
+
+// class UR10ArmControllerNode : public rclcpp::Node
+// {
+// public:
+//     UR10ArmControllerNode() : Node("ur10_arm_controller_node")
+//     {
+//         ball_position_sub_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
+//             "/ball_position", 10, std::bind(&UR10ArmControllerNode::ball_position_callback, this, std::placeholders::_1));
+
+//         odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+//             "/odom", 10, std::bind(&UR10ArmControllerNode::odom_callback, this, std::placeholders::_1));
+
+//         end_effector_velocity_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/end_effector_velocity", 10);
+
+//         joint_velocity_command_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/joint_velocity_controller/commands", 10);
+
+//         joint_velocity_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+//             "/joint_velocities", 10, std::bind(&UR10ArmControllerNode::joint_velocity_callback, this, std::placeholders::_1));
+//     }
+
+// private:
+//     void ball_position_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
+//     {
+//         geometry_msgs::msg::Twist twist_msg;
+//         // Proportional controller to move the end-effector towards the ball
+//         twist_msg.linear.x = 0.5 * msg->point.x;
+//         twist_msg.linear.y = 0.5 * msg->point.y;
+//         twist_msg.linear.z = 0.5 * (1.0 - msg->point.z); // Try to maintain a 1m distance
+//         end_effector_velocity_pub_->publish(twist_msg);
+//     }
+
+//     void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
+//     {
+//         // This is where you would incorporate the mobile base's movement
+//         // to adjust the arm's target. For now, we'll just log it.
+//         RCLCPP_INFO(this->get_logger(), "Odometry received");
+//     }
+
+//     void joint_velocity_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+//     {
+//         // Directly pass through the calculated joint velocities to the robot controller
+//         joint_velocity_command_pub_->publish(*msg);
+//     }
+
+//     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr ball_position_sub_;
+//     rclcpp::Subscription<nav_msgs/msg::Odometry>::SharedPtr odom_sub_;
+//     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr end_effector_velocity_pub_;
+//     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_velocity_command_pub_;
+//     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr joint_velocity_sub_;
+// };
+
+// int main(int argc, char * argv[])
+// {
+//     rclcpp::init(argc, argv);
+//     rclcpp::spin(std::make_shared<UR10ArmControllerNode>());
+//     rclcpp::shutdown();
+//     return 0;
+// }
+
 
 class UR10VelocityControllerNode : public rclcpp::Node
 {
