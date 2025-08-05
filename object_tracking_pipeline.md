@@ -13,7 +13,7 @@ The goal of this phase is to get all the software components installed and commu
 
         Pull the official ROS 2 Humble image: docker pull osrf/ros:humble-desktop.
 
-TODO:        Create a docker-compose.yml file to manage the container. This makes it easy to handle X11 forwarding (for GUI apps like RViz) and network settings.
+✅        Create a docker-compose.yml file to manage the container. This makes it easy to handle X11 forwarding (for GUI apps like RViz) and network settings.
 
         Ensure your Docker container is on the same host network as Isaac Sim for easy communication (network_mode: "host").
 
