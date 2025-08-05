@@ -17,6 +17,8 @@ The goal of this phase is to get all the software components installed and commu
 
         Ensure your Docker container is on the same host network as Isaac Sim for easy communication (network_mode: "host").
 
+TODO: create an alias version of this and test
+
 2. Isaac Sim & ROS 2 Bridge:
 
     Action: Install Isaac Sim and configure it to talk to ROS 2.
