@@ -10,7 +10,7 @@ using MovingRobotLifecycle =
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
 
-class MovingRobotServerNode : public rclcpp_lifecycle::LifecycleNode 
+class MovingRobotServerNode : public rclcpp_lifecycle::LifecycleNode
 {
 
 public:
@@ -114,7 +114,7 @@ private:
             RCLCPP_INFO(this->get_logger(), "Invalid position/velocity, reject goal");
             return rclcpp_action::GoalResponse::REJECT;
         }
-        
+
         //preemtping after getting a valid goal
         {
             std::lock_guard<std::mutex>lock(mutex_);
@@ -157,14 +157,14 @@ private:
         //get request from goal
         int goal_position = goal_handle->get_goal()->position;
         int velocity = goal_handle->get_goal()->velocity;
-        
+
         // execute the action
-  
+
         auto result = std::make_shared<MovingRobot::Result>();
         auto feedback = std::make_shared<MovingRobot::Feedback>();
         rclcpp::Rate loop_rate(1.0);
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        
+
         RCLCPP_INFO(this->get_logger(), "Execute goal");
         while (rclcpp::ok()) {
             // Check if needs to preempt goal
@@ -183,7 +183,7 @@ private:
                 result->position = robot_position_;
                 if (goal_position == robot_position_) {
                    result->message = "Success";
-                   goal_handle->succeed(result); 
+                   goal_handle->succeed(result);
                 }
                 else {
                     result->message = "Canceled";
@@ -223,7 +223,7 @@ private:
 
             loop_rate.sleep();
         }
-          
+
     }
 
     rclcpp_action::Server<MovingRobot>::SharedPtr moving_robot_server_;
@@ -239,7 +239,7 @@ private:
 
 int main(int argc,char **argv){
     rclcpp::init(argc,argv);
-    auto node = std::make_shared<MovingRobotServerNode>(); 
+    auto node = std::make_shared<MovingRobotServerNode>();
     rclcpp::executors::MultiThreadedExecutor executor;
     executor.add_node(node->get_node_base_interface());
     executor.spin();
