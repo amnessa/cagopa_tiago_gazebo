@@ -67,7 +67,7 @@ TODO: 4. MoveIt2 Configuration:
 
         Generate the configuration package and place it in your src folder.
 
-TODO: 5. Initial Sanity Check:
+5. Initial Sanity Check:
 
     Action: Verify that all components are connected and working.
 
@@ -76,6 +76,7 @@ TODO: 5. Initial Sanity Check:
         In Isaac Sim, load the UR10 robot asset.
 
         In your Docker terminal, launch the simulation driver and MoveIt2: ros2 launch ur_moveit_config ur_sim_control.launch.py ur_type:=ur10 use_fake_hardware:=true launch_rviz:=true.
+TODO: cyclonedds-cpp wont render robot model but fastdds does
 
         In RViz: You should see the UR10 model. In the left panel, under MotionPlanning, ensure the "Scene Geometry" and "Planned Path" displays are active.
 
