@@ -14,30 +14,10 @@ find_package(trajectory_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-add_executable(tiago_controller_node src/tiago_controller_node.cpp)
-ament_target_dependencies(tiago_controller_node rclcpp rclcpp_action control_msgs trajectory_msgs)
-
-add_executable(tiago_controller_node7 src/tiago_controller_node7.cpp)
-ament_target_dependencies(tiago_controller_node7 rclcpp rclcpp_action control_msgs trajectory_msgs)
-
-add_executable(ur3_controller_node src/ur3_controller_node.cpp)
-ament_target_dependencies(ur3_controller_node rclcpp rclcpp_action control_msgs trajectory_msgs)
-
-add_executable(franka_controller_node src/franka_controller_node.cpp)
-ament_target_dependencies(franka_controller_node rclcpp rclcpp_action control_msgs trajectory_msgs)
-
-add_executable(ur10_controller_node src/ur10_controller_node.cpp)
-ament_target_dependencies(ur10_controller_node rclcpp sensor_msgs)
-
 add_executable(ur10_velocity_controller_node src/ur10_velocity_controller_node.cpp)
 ament_target_dependencies(ur10_velocity_controller_node rclcpp sensor_msgs std_msgs)
 
 install(TARGETS
-  tiago_controller_node
-  tiago_controller_node7
-  ur3_controller_node
-  franka_controller_node
-  ur10_controller_node
   ur10_velocity_controller_node
   DESTINATION lib/${PROJECT_NAME}/
 )
