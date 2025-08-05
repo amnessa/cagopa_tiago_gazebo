@@ -105,6 +105,18 @@ private:
 
     void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
+        if (current_joint_state_.name.empty()) {
+            RCLCPP_INFO(this->get_logger(), "First joint state message received. Learning joint order.");
+            // Learn the joint order from the first message received
+            arm_joint_names_ = msg->name;
+            // Log the learned joint order
+            std::string joints_log = "Learned arm joint names: ";
+            for(const auto& name : arm_joint_names_) {
+                joints_log += name + ", ";
+            }
+            RCLCPP_INFO(this->get_logger(), "%s", joints_log.c_str());
+        }
+
         current_joint_state_ = *msg;
 
         // Log joint states periodically
@@ -163,24 +175,28 @@ private:
 
     void sendPositionCommands()
     {
+        if (current_joint_state_.name.empty()) {
+            RCLCPP_WARN(this->get_logger(), "Cannot send command, joint order not yet learned.");
+            return;
+        }
         sensor_msgs::msg::JointState command_msg;
         command_msg.header.stamp = this->get_clock()->now();
         command_msg.name = arm_joint_names_;
-        command_msg.name.insert(command_msg.name.end(), gripper_joint_names_.begin(), gripper_joint_names_.end());
+        // command_msg.name.insert(command_msg.name.end(), gripper_joint_names_.begin(), gripper_joint_names_.end());
 
         std::vector<double> target_arm_position = getCurrentTargetPosition();
-        std::vector<double> target_gripper_position = getCurrentGripperPosition();
+        // std::vector<double> target_gripper_position = getCurrentGripperPosition();
 
         command_msg.position = target_arm_position;
-        command_msg.position.insert(command_msg.position.end(),
-                                   target_gripper_position.begin(), target_gripper_position.end());
+        // command_msg.position.insert(command_msg.position.end(),
+        //                            target_gripper_position.begin(), target_gripper_position.end());
 
         // Clear velocity and effort arrays for position control
         command_msg.velocity.clear();
         command_msg.effort.clear();
 
         joint_command_publisher_->publish(command_msg);
-        RCLCPP_INFO(this->get_logger(), "Sent POSITION command (mode 0), movement %d", movement_index_ + 1);
+        RCLCPP_INFO(this->get_logger(), "Sent ARM POSITION command (mode 0), movement %d", movement_index_ + 1);
     }
 
     void sendVelocityCommands()
@@ -188,23 +204,23 @@ private:
         sensor_msgs::msg::JointState command_msg;
         command_msg.header.stamp = this->get_clock()->now();
         command_msg.name = arm_joint_names_;
-        command_msg.name.insert(command_msg.name.end(), gripper_joint_names_.begin(), gripper_joint_names_.end());
+        // command_msg.name.insert(command_msg.name.end(), gripper_joint_names_.begin(), gripper_joint_names_.end());
 
         std::vector<double> target_velocity = getCurrentTargetVelocity();
-        std::vector<double> gripper_velocity(gripper_joint_names_.size(), 0.0);
+        // std::vector<double> gripper_velocity(gripper_joint_names_.size(), 0.0);
 
         // Clear position array for velocity control
         command_msg.position.clear();
 
         command_msg.velocity = target_velocity;
-        command_msg.velocity.insert(command_msg.velocity.end(),
-                                   gripper_velocity.begin(), gripper_velocity.end());
+        // command_msg.velocity.insert(command_msg.velocity.end(),
+        //                            gripper_velocity.begin(), gripper_velocity.end());
 
         // Clear effort array
         command_msg.effort.clear();
 
         joint_command_publisher_->publish(command_msg);
-        RCLCPP_INFO(this->get_logger(), "Sent VELOCITY command (mode 1), movement %d", movement_index_ + 1);
+        RCLCPP_INFO(this->get_logger(), "Sent ARM VELOCITY command (mode 1), movement %d", movement_index_ + 1);
     }
 
     void sendEffortCommands()
@@ -212,22 +228,22 @@ private:
         sensor_msgs::msg::JointState command_msg;
         command_msg.header.stamp = this->get_clock()->now();
         command_msg.name = arm_joint_names_;
-        command_msg.name.insert(command_msg.name.end(), gripper_joint_names_.begin(), gripper_joint_names_.end());
+        // command_msg.name.insert(command_msg.name.end(), gripper_joint_names_.begin(), gripper_joint_names_.end());
 
         // Simple effort commands (small torques)
         std::vector<double> effort_commands = {1.0, 0.5, 0.3, 0.2, 0.1, 0.1};
-        std::vector<double> gripper_effort(gripper_joint_names_.size(), 0.0);
+        // std::vector<double> gripper_effort(gripper_joint_names_.size(), 0.0);
 
         // Clear position and velocity arrays
         command_msg.position.clear();
         command_msg.velocity.clear();
 
         command_msg.effort = effort_commands;
-        command_msg.effort.insert(command_msg.effort.end(),
-                                gripper_effort.begin(), gripper_effort.end());
+        // command_msg.effort.insert(command_msg.effort.end(),
+        //                         gripper_effort.begin(), gripper_effort.end());
 
         joint_command_publisher_->publish(command_msg);
-        RCLCPP_INFO(this->get_logger(), "Sent EFFORT command (mode 2), movement %d", movement_index_ + 1);
+        RCLCPP_INFO(this->get_logger(), "Sent ARM EFFORT command (mode 2), movement %d", movement_index_ + 1);
     }
 
     void sendFloat64PositionCommands()
