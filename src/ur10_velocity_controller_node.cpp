@@ -4,6 +4,8 @@
 #include <chrono>
 #include <vector>
 #include <cmath>
+#include <algorithm> // Required for std::find
+#include <map>       // Required for std::map
 
 using namespace std::chrono_literals;
 
@@ -91,10 +93,10 @@ private:
 
         // Velocity commands (rad/s)
         velocity1_ = {0.5, 0.0, 0.0, 0.0, 0.0, 0.0};    // Slow shoulder pan
-        velocity2_ = {0.0, 0.3, 0.0, 0.0, 0.0, 0.0};    // Slow shoulder lift
-        velocity3_ = {0.0, 0.0, 0.4, 0.0, 0.0, 0.0};    // Slow elbow
-        velocity4_ = {0.0, 0.0, 0.0, 0.3, 0.0, 0.0};    // Slow wrist 1
-        velocity5_ = {0.0, 0.0, 0.0, 0.0, 0.3, 0.0};    // Slow wrist 2
+        velocity2_ = {0.0, 0.5, 0.0, 0.0, 0.0, 0.0};    // Slow shoulder lift
+        velocity3_ = {0.0, 0.0, 0.5, 0.0, 0.0, 0.0};    // Slow elbow
+        velocity4_ = {0.0, 0.0, 0.0, 0.5, 0.0, 0.0};    // Slow wrist 1
+        velocity5_ = {0.0, 0.0, 0.0, 0.0, 0.5, 0.0};    // Slow wrist 2
 
         // Gripper open/closed positions
         gripper_open_ = {0.08, 0.08, 0.0, 0.0, -0.08, -0.08, 0.08, 0.08};
@@ -130,6 +132,18 @@ private:
 
             arm_joint_names_ = temp_arm_joints;
             gripper_joint_names_ = temp_gripper_joints;
+
+            // Create a mapping from the initial hardcoded order to the learned order
+            arm_joint_map_.resize(initial_arm_joints.size());
+            for(size_t i = 0; i < initial_arm_joints.size(); ++i) {
+                auto it = std::find(arm_joint_names_.begin(), arm_joint_names_.end(), initial_arm_joints[i]);
+                if (it != arm_joint_names_.end()) {
+                    arm_joint_map_[i] = std::distance(arm_joint_names_.begin(), it);
+                } else {
+                    // Handle error: a joint defined in the initial list was not found in the received list
+                    RCLCPP_ERROR(this->get_logger(), "Could not find joint '%s' in received joint states!", initial_arm_joints[i].c_str());
+                }
+            }
 
             // Log the learned joint order
             std::string arm_log = "Learned and ordered ARM joints: ";
@@ -290,28 +304,42 @@ private:
         RCLCPP_INFO(this->get_logger(), "Sent FLOAT64 VELOCITY command (mode 4), movement %d", movement_index_ + 1);
     }
 
+    std::vector<double> reorder_vector(const std::vector<double>& in_vec)
+    {
+        if (arm_joint_map_.empty()) return in_vec; // Return original if map is not ready
+        std::vector<double> out_vec(in_vec.size());
+        for(size_t i = 0; i < in_vec.size(); ++i) {
+            out_vec[arm_joint_map_[i]] = in_vec[i];
+        }
+        return out_vec;
+    }
+
     std::vector<double> getCurrentTargetPosition()
     {
+        std::vector<double> target_position;
         switch (movement_index_) {
-            case 0: return home_position_;
-            case 1: return movement1_;
-            case 2: return movement2_;
-            case 3: return movement3_;
-            case 4: return movement4_;
-            default: return home_position_;
+            case 0: target_position = home_position_; break;
+            case 1: target_position = movement1_; break;
+            case 2: target_position = movement2_; break;
+            case 3: target_position = movement3_; break;
+            case 4: target_position = movement4_; break;
+            default: target_position = home_position_; break;
         }
+        return reorder_vector(target_position);
     }
 
     std::vector<double> getCurrentTargetVelocity()
     {
+        std::vector<double> target_velocity;
         switch (movement_index_) {
-            case 0: return velocity1_;
-            case 1: return velocity2_;
-            case 2: return velocity3_;
-            case 3: return velocity4_;
-            case 4: return velocity5_;
-            default: return std::vector<double>(6, 0.0);
+            case 0: target_velocity = velocity1_; break;
+            case 1: target_velocity = velocity2_; break;
+            case 2: target_velocity = velocity3_; break;
+            case 3: target_velocity = velocity4_; break;
+            case 4: target_velocity = velocity5_; break;
+            default: target_velocity = std::vector<double>(6, 0.0); break;
         }
+        return reorder_vector(target_velocity);
     }
 
     std::vector<double> getCurrentGripperPosition()
@@ -333,6 +361,7 @@ private:
 
     std::vector<std::string> arm_joint_names_;
     std::vector<std::string> gripper_joint_names_;
+    std::vector<int> arm_joint_map_; // Map from initial order to learned order
 
     sensor_msgs::msg::JointState current_joint_state_;
 
