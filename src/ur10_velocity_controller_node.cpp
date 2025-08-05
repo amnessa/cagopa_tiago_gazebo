@@ -107,14 +107,38 @@ private:
     {
         if (current_joint_state_.name.empty()) {
             RCLCPP_INFO(this->get_logger(), "First joint state message received. Learning joint order.");
-            // Learn the joint order from the first message received
-            arm_joint_names_ = msg->name;
-            // Log the learned joint order
-            std::string joints_log = "Learned arm joint names: ";
-            for(const auto& name : arm_joint_names_) {
-                joints_log += name + ", ";
+
+            // Store the full state
+            current_joint_state_ = *msg;
+
+            // Filter and reorder our internal joint lists to match the received order
+            std::vector<std::string> received_joints = msg->name;
+            std::vector<std::string> temp_arm_joints;
+            std::vector<std::string> temp_gripper_joints;
+
+            // Create a copy of the initial lists to check against
+            const std::vector<std::string> initial_arm_joints = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"};
+            const std::vector<std::string> initial_gripper_joints = {"finger_joint", "right_outer_knuckle_joint", "left_outer_finger_joint", "right_outer_finger_joint", "left_inner_finger_joint", "right_inner_finger_joint", "left_inner_finger_pad_joint", "right_inner_finger_pad_joint"};
+
+            for (const auto& received_joint : received_joints) {
+                if (std::find(initial_arm_joints.begin(), initial_arm_joints.end(), received_joint) != initial_arm_joints.end()) {
+                    temp_arm_joints.push_back(received_joint);
+                } else if (std::find(initial_gripper_joints.begin(), initial_gripper_joints.end(), received_joint) != initial_gripper_joints.end()) {
+                    temp_gripper_joints.push_back(received_joint);
+                }
             }
-            RCLCPP_INFO(this->get_logger(), "%s", joints_log.c_str());
+
+            arm_joint_names_ = temp_arm_joints;
+            gripper_joint_names_ = temp_gripper_joints;
+
+            // Log the learned joint order
+            std::string arm_log = "Learned and ordered ARM joints: ";
+            for(const auto& name : arm_joint_names_) { arm_log += name + ", "; }
+            RCLCPP_INFO(this->get_logger(), "%s", arm_log.c_str());
+
+            std::string gripper_log = "Learned and ordered GRIPPER joints: ";
+            for(const auto& name : gripper_joint_names_) { gripper_log += name + ", "; }
+            RCLCPP_INFO(this->get_logger(), "%s", gripper_log.c_str());
         }
 
         current_joint_state_ = *msg;
