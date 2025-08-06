@@ -6,6 +6,9 @@ controller_manager:
     ur_manipulator_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
+    #Controller for real-time tracking (velocity -based)
+    forward_velocity_controller:
+      type: forward_velocity_controller/ForwardCommandController
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -21,7 +24,18 @@ ur_manipulator_controller:
       - wrist_3_joint
     command_interfaces:
       - position
-      - velocity
     state_interfaces:
       - position
       - velocity
+
+# Configuration for the real-time velocity controller
+forward_velocity_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+    interface_name: velocity
