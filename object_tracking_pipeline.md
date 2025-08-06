@@ -29,7 +29,7 @@ The goal of this phase is to get all the software components installed and commu
 
         Inside Isaac Sim, go to Window > Extensions and enable omni.isaac.ros2_bridge. This extension translates simulation data into ROS 2 messages and vice-versa.
 
-        In the ROS 2 Bridge settings, ensure the "ROS Domain ID" matches your ROS 2 environment and the middleware is set correctly (the default for Humble is CycloneDDS).
+        In the ROS 2 Bridge settings, ensure the "ROS Domain ID" matches your ROS 2 environment and the middleware is set correctly (the default for Humble is CycloneDDS) -> changed to fast .
 
 3. ROS 2 Workspace & Dependencies:
 

@@ -8,6 +8,7 @@ sudo apt install ros-humble-moveit
 apt update && apt install ros-humble-joint-state-publisher-gui
 ros-humble-xacro
 
-apt update && apt install ros-humble-rmw-fastrtps-cpp ros-humble-control-msgs ros-humble-moveit ros-humble-joint-state-publisher-gui ros-humble-xacro
+apt update && apt install ros-humble-rmw-fastrtps-cpp ros-humble-control-msgs ros-humble-moveit ros-humble-joint-state-publisher-gui ros-humble-xacro ros-humble-ros2-control ros-humble-ros2-controllers
+
 
 install everytime for docker

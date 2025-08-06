@@ -1,0 +1,27 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: cagopa_tiago_gazebo
+    relative_path: description/ur10e/ur10e.urdf
+  srdf:
+    relative_path: config/ur10e.srdf
+  package_settings:
+    author_name: cagdas
+    author_email: cagdas.guven@metu.edu.tr
+    generated_timestamp: 1754477825
+  control_xacro:
+    command:
+      - position
+      - velocity
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+      - velocity
+    state:
+      - position
+      - velocity
