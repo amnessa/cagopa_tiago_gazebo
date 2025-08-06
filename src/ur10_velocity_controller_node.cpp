@@ -106,9 +106,14 @@ public:
         // Define some predefined movements for the UR10 arm
         initializeMovements();
 
-        // Create subscriber to joint states
+        // Create subscriber to joint states - try multiple topic names
         joint_state_subscriber_ = this->create_subscription<sensor_msgs::msg::JointState>(
             "/isaac_joint_states", 10,
+            std::bind(&UR10VelocityControllerNode::jointStateCallback, this, std::placeholders::_1));
+
+        // Also try subscribing to standard joint_states topic
+        joint_state_subscriber_standard_ = this->create_subscription<sensor_msgs::msg::JointState>(
+            "/joint_states", 10,
             std::bind(&UR10VelocityControllerNode::jointStateCallback, this, std::placeholders::_1));
 
         // Try multiple publishers for different possible command topics
@@ -125,6 +130,10 @@ public:
         // Create timer for periodic movement commands
         control_timer_ = this->create_wall_timer(
             2000ms, std::bind(&UR10VelocityControllerNode::controlTimerCallback, this));
+
+        // Create a separate timer for diagnostics
+        diagnostic_timer_ = this->create_wall_timer(
+            5000ms, std::bind(&UR10VelocityControllerNode::diagnosticTimerCallback, this));
 
         RCLCPP_INFO(this->get_logger(), "UR10 Velocity Controller Node initialized successfully");
         RCLCPP_INFO(this->get_logger(), "Will try different command strategies:");
@@ -173,7 +182,11 @@ private:
     void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
         if (current_joint_state_.name.empty()) {
-            RCLCPP_INFO(this->get_logger(), "First joint state message received. Learning joint order.");
+            RCLCPP_INFO(this->get_logger(), "First joint state message received from topic. Learning joint order.");
+            RCLCPP_INFO(this->get_logger(), "Received %zu joints:", msg->name.size());
+            for (size_t i = 0; i < msg->name.size(); ++i) {
+                RCLCPP_INFO(this->get_logger(), "  Joint %zu: %s", i, msg->name[i].c_str());
+            }
 
             // Store the full state
             current_joint_state_ = *msg;
@@ -274,6 +287,28 @@ private:
         if (timer_count_ % 5 == 0) {
             movement_index_ = (movement_index_ + 1) % 5;
         }
+    }
+
+    void diagnosticTimerCallback()
+    {
+        RCLCPP_INFO(this->get_logger(), "=== DIAGNOSTIC INFO ===");
+        RCLCPP_INFO(this->get_logger(), "Joint states received: %s",
+                   current_joint_state_.name.empty() ? "NO" : "YES");
+
+        if (!current_joint_state_.name.empty()) {
+            RCLCPP_INFO(this->get_logger(), "Number of joints: %zu", current_joint_state_.name.size());
+            RCLCPP_INFO(this->get_logger(), "ARM joints found: %zu", arm_joint_names_.size());
+            RCLCPP_INFO(this->get_logger(), "GRIPPER joints found: %zu", gripper_joint_names_.size());
+        }
+
+        // Check topic publishers/subscribers
+        auto topic_names_and_types = this->get_topic_names_and_types();
+        for (const auto& topic : topic_names_and_types) {
+            if (topic.first.find("joint") != std::string::npos) {
+                RCLCPP_INFO(this->get_logger(), "Found joint topic: %s", topic.first.c_str());
+            }
+        }
+        RCLCPP_INFO(this->get_logger(), "=====================");
     }
 
     void sendPositionCommands()
@@ -419,10 +454,12 @@ private:
 
     // Member variables
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_standard_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_command_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_position_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_velocity_publisher_;
     rclcpp::TimerBase::SharedPtr control_timer_;
+    rclcpp::TimerBase::SharedPtr diagnostic_timer_;
 
     std::vector<std::string> arm_joint_names_;
     std::vector<std::string> gripper_joint_names_;
