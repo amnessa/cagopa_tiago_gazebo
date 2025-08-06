@@ -45,7 +45,7 @@ TODO:        Clone the ROS 2 drivers: git clone -b humble https://github.com/Uni
 
         Build your workspace with colcon build.
 
-TODO: 4. MoveIt2 Configuration:
+✅ 4. MoveIt2 Configuration:
 
     Action: Generate the configuration files that MoveIt2 needs to plan for the UR10.
 

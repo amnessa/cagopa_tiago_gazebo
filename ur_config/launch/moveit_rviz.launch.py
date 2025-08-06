@@ -2,6 +2,8 @@ from moveit_configs_utils import MoveItConfigsBuilder
 from moveit_configs_utils.launches import generate_moveit_rviz_launch
 import os
 from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch_ros.actions import Node
 import xacro
 
 
@@ -22,4 +24,16 @@ def generate_launch_description():
         .to_moveit_configs()
     )
 
-    return generate_moveit_rviz_launch(moveit_config)
+    # Create the robot_state_publisher node
+    robot_state_publisher_node = Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        output="screen",
+        parameters=[robot_description],
+    )
+
+    # Generate the RViz launch description
+    rviz_launch = generate_moveit_rviz_launch(moveit_config)
+
+    # Return a LaunchDescription with both the robot_state_publisher and RViz
+    return LaunchDescription([robot_state_publisher_node, rviz_launch])
