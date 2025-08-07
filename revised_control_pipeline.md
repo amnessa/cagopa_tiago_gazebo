@@ -33,7 +33,7 @@ Goal: Create a ROS 2 node that "sees" the target object and publishes its locati
 
     Simulating the Target:
 
-        In Isaac Sim, add a red sphere to the stage. Use Isaac Sim's tools to make it move along a predefined path (e.g., a circle or a figure-eight).
+TODO:        In Isaac Sim, add a red sphere to the stage. Use Isaac Sim's tools to make it move along a predefined path (e.g., a circle or a figure-eight).
 
     Simulated Perception:
 
@@ -52,6 +52,7 @@ Goal: Create a ROS 2 node that "sees" the target object and publishes its locati
             Estimates the depth (Z) to the ball based on the ball's radius in the image (assuming you know the ball's real-world size).
 
             Publishes a geometry_msgs/msg/Point message to /target_pixel_coords, where point.x and point.y are the pixel coordinates, and point.z is the estimated depth.
+TODO: We get the raw data from isaac sim, I need script for image process. lets just try following arbitrary color with opencv object tracking. or try painting it again.
 
 Phase 3: Real-Time Servoing Controller
 
