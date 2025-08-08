@@ -11,6 +11,11 @@
 
 class BallTrackerNode : public rclcpp::Node
 {
+private:
+    // Define the synchronization policy
+    typedef message_filters::sync_policies::ApproximateTime<
+        sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo> SyncPolicy;
+
 public:
     BallTrackerNode() : Node("ball_tracker_node")
     {
@@ -24,16 +29,13 @@ public:
         depth_sub_.subscribe(this, "/rsd455_depth");
         cam_info_sub_.subscribe(this, "/rsd455_img/camera_info"); // Often published here by camera drivers
 
-        // Synchronizer to get corresponding messages
+        // Create a synchronizer with a queue size of 10
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
             SyncPolicy(10), image_sub_, depth_sub_, cam_info_sub_);
 
-        // Set the time allowance (slop) for the synchronizer in seconds
-        sync_->setAgePenalty(1.0); // Penalize messages that are old
-        sync_->setInterMessageLowerBound(0, rclcpp::Duration::from_seconds(0.05)); // Min time between messages
-        sync_->setInterMessageLowerBound(1, rclcpp::Duration::from_seconds(0.05));
-        sync_->setInterMessageLowerBound(2, rclcpp::Duration::from_seconds(0.05));
-
+        // Set the allowable time difference (slop) between messages in seconds.
+        // Let's increase this to be more tolerant of timestamp mismatches.
+        sync_->setAgePenalty(0.2); // Increased to 0.2 seconds
 
         sync_->registerCallback(std::bind(&BallTrackerNode::synced_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         RCLCPP_INFO(this->get_logger(), "Ball tracker node started and subscribers are set up.");
@@ -116,6 +118,7 @@ private:
         }
         // Publish the debug image regardless of whether a ball was found
         debug_image_pub_->publish(*cv_ptr->toImageMsg());
+        RCLCPP_DEBUG(this->get_logger(), "Publishing debug image.");
     }
 
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_;
@@ -126,7 +129,6 @@ private:
     message_filters::Subscriber<sensor_msgs::msg::Image> depth_sub_;
     message_filters::Subscriber<sensor_msgs::msg::CameraInfo> cam_info_sub_;
 
-    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo> SyncPolicy;
     std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
 
     image_geometry::PinholeCameraModel cam_model_;
