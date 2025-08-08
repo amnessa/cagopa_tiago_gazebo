@@ -16,6 +16,8 @@ public:
     {
         // Publisher for the 3D position of the ball
         publisher_ = this->create_publisher<geometry_msgs::msg::PointStamped>("/ball_position", 10);
+        // Publisher for the debug image with bounding box
+        debug_image_pub_ = this->create_publisher<sensor_msgs::msg::Image>("/ball_tracker/debug_image", 10);
 
         // Subscribers for image, depth, and camera info using message filters
         image_sub_.subscribe(this, "/rsd455_img");
@@ -25,7 +27,16 @@ public:
         // Synchronizer to get corresponding messages
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
             SyncPolicy(10), image_sub_, depth_sub_, cam_info_sub_);
+
+        // Set the time allowance (slop) for the synchronizer in seconds
+        sync_->setAgePenalty(1.0); // Penalize messages that are old
+        sync_->setInterMessageLowerBound(0, rclcpp::Duration::from_seconds(0.05)); // Min time between messages
+        sync_->setInterMessageLowerBound(1, rclcpp::Duration::from_seconds(0.05));
+        sync_->setInterMessageLowerBound(2, rclcpp::Duration::from_seconds(0.05));
+
+
         sync_->registerCallback(std::bind(&BallTrackerNode::synced_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        RCLCPP_INFO(this->get_logger(), "Ball tracker node started and subscribers are set up.");
     }
 
 private:
@@ -33,6 +44,7 @@ private:
                          const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg,
                          const sensor_msgs::msg::CameraInfo::ConstSharedPtr& info_msg)
     {
+        RCLCPP_DEBUG(this->get_logger(), "Synced callback triggered!");
         cv_bridge::CvImagePtr cv_ptr, depth_ptr;
         try
         {
@@ -49,10 +61,20 @@ private:
         cv::Mat hsv_image;
         cv::cvtColor(cv_ptr->image, hsv_image, cv::COLOR_BGR2HSV);
 
-        cv::Scalar lower_red = cv::Scalar(0, 100, 100);
-        cv::Scalar upper_red = cv::Scalar(10, 255, 255);
-        cv::Mat mask;
-        cv::inRange(hsv_image, lower_red, upper_red, mask);
+        // Red color can wrap around in HSV, so we check two ranges
+        cv::Scalar lower_red1(0, 120, 70);
+        cv::Scalar upper_red1(10, 255, 255);
+        cv::Scalar lower_red2(170, 120, 70);
+        cv::Scalar upper_red2(180, 255, 255);
+        cv::Mat mask1, mask2, mask;
+        cv::inRange(hsv_image, lower_red1, upper_red1, mask1);
+        cv::inRange(hsv_image, lower_red2, upper_red2, mask2);
+        mask = mask1 | mask2;
+
+        // --- Optional: Add morphological operations to clean up the mask ---
+        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+        cv::morphologyEx(mask, mask, cv::MORPH_OPEN, kernel);
+        cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, kernel);
 
         std::vector<std::vector<cv::Point>> contours;
         cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
@@ -68,6 +90,11 @@ private:
             if (M.m00 > 0)
             {
                 cv::Point2f center(M.m10 / M.m00, M.m01 / M.m00);
+
+                // --- Draw bounding box and center for visualization ---
+                cv::Rect bounding_box = cv::boundingRect(*largest_contour);
+                cv::rectangle(cv_ptr->image, bounding_box, cv::Scalar(0, 255, 0), 2); // Green box
+                cv::circle(cv_ptr->image, center, 5, cv::Scalar(0, 0, 255), -1);      // Red circle at center
 
                 // --- 3D position estimation ---
                 // Get depth value at the center of the ball
@@ -87,9 +114,12 @@ private:
                 publisher_->publish(point_msg);
             }
         }
+        // Publish the debug image regardless of whether a ball was found
+        debug_image_pub_->publish(*cv_ptr->toImageMsg());
     }
 
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr debug_image_pub_;
 
     // Message filters and synchronizer
     message_filters::Subscriber<sensor_msgs::msg::Image> image_sub_;

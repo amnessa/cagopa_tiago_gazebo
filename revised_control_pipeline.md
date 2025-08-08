@@ -75,11 +75,13 @@ Goal: Create the core control node that implements the search-and-track logic us
         Action: At every time step (i.e., for each new camera frame), the node solves a small optimization problem to find the joint velocities q_dot that minimize a cost function.
 
         Cost Function:
-        Cost(q_dot) = w₁ * ||pixel_error||² + w₂ * (1/manipulability_measure)
+        Cost = w₁ * ||pixel_error||² + w₂ * (1/manipulability) + w₃ * ||dist_to_obj||²
 
             ||pixel_error||²: The primary objective. This term drives the ball's current pixel coordinates toward the center of the image.
 
             (1/manipulability_measure): The singularity avoidance term. As the robot approaches a singularity, the manipulability measure sqrt(det(J * J^T)) gets small, making this term very large. The optimizer will naturally find a q_dot that moves the arm away from the singularity to reduce the cost.
+
+            ||dist_to_obj||²: This term represents the distance from the robot's end effector to the target object. As the robot gets closer to the object, this term decreases, encouraging the robot to move toward the target. and also we need to set a minimum distance to push the robot away from the object after it gets close enough.
 
         Implementation:
 
