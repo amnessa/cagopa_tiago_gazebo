@@ -10,10 +10,12 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>rclcpp_action</depend>
-  <depend>control_msgs</depend>
-  <depend>trajectory_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>image_transport</depend>
+  <depend>message_filters</depend>
+  <depend>image_geometry</depend>
   <depend>gazebo_ros</depend>
   <depend>gazebo_ros_pkgs</depend>
   <depend>tiago_description</depend>
