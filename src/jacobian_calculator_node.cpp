@@ -60,8 +60,27 @@ public:
 private:
     void joint_state_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
-        if (robot_state_) {
-            robot_state_->setVariablePositions(msg->name, msg->position);
+        if (robot_state_)
+        {
+            // Filter the incoming joint state message to only include joints known to our robot model.
+            // This prevents errors if the topic contains joints for other hardware, like a gripper.
+            std::vector<std::string> known_joint_names;
+            std::vector<double> known_joint_positions;
+
+            for (size_t i = 0; i < msg->name.size(); ++i)
+            {
+                // Check if the joint from the message exists in our model
+                if (robot_state_->getRobotModel()->hasJointModel(msg->name[i]))
+                {
+                    known_joint_names.push_back(msg->name[i]);
+                    known_joint_positions.push_back(msg->position[i]);
+                }
+            }
+
+            if (!known_joint_names.empty())
+            {
+                robot_state_->setVariablePositions(known_joint_names, known_joint_positions);
+            }
         }
     }
 
