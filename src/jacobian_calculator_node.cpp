@@ -99,8 +99,16 @@ private:
 
         Eigen::MatrixXd joint_velocities = jacobian.completeOrthogonalDecomposition().pseudoInverse() * end_effector_velocity;
 
+        // Create and populate the message to publish
         std_msgs::msg::Float64MultiArray joint_velocity_msg;
-        joint_velocity_msg.data.assign(joint_velocities.data(), joint_velocities.data() + joint_velocities.size());
+        joint_velocity_msg.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
+        joint_velocity_msg.layout.dim[0].size = joint_velocities.size();
+        joint_velocity_msg.layout.dim[0].stride = 1;
+        joint_velocity_msg.layout.dim[0].label = "joint_velocities";
+        joint_velocity_msg.data.resize(joint_velocities.size());
+        Eigen::VectorXd::Map(&joint_velocity_msg.data[0], joint_velocities.size()) = joint_velocities;
+
+        // Publish the message
         joint_velocity_pub_->publish(joint_velocity_msg);
     }
 
