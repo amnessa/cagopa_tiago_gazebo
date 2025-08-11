@@ -18,6 +18,8 @@ find_package(cv_bridge REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(image_geometry REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 add_executable(ur10_velocity_controller_node src/ur10_velocity_controller_node.cpp)
 ament_target_dependencies(ur10_velocity_controller_node rclcpp sensor_msgs std_msgs)
@@ -36,10 +38,21 @@ ament_target_dependencies(ball_tracker_node
 )
 target_link_libraries(ball_tracker_node ${OpenCV_LIBRARIES})
 
+add_executable(jacobian_calculator_node src/jacobian_calculator_node.cpp)
+ament_target_dependencies(jacobian_calculator_node
+  rclcpp
+  sensor_msgs
+  std_msgs
+  geometry_msgs
+  moveit_ros_planning_interface
+)
+target_link_libraries(jacobian_calculator_node Eigen3::Eigen)
+
 install(TARGETS
   ur10_velocity_controller_node
   test_joint_state_publisher
   ball_tracker_node
+  jacobian_calculator_node
   DESTINATION lib/${PROJECT_NAME}/
 )
 
