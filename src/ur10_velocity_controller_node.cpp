@@ -29,9 +29,8 @@ public:
         end_effector_velocity_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/end_effector_velocity", 10);
 
         // The jacobian_calculator_node will publish joint velocities, which we send to the robot.
-        // The topic name must match the one configured in your ros2_controllers.yaml,
-        // typically it's <controller_name>/commands
-        joint_velocity_command_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/joint_velocity_controller/commands", 10);
+        // The topic name must match the one Isaac Sim is listening to.
+        joint_velocity_command_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/isaac_joint_commands", 10);
 
         // We subscribe to the output of the jacobian_calculator_node
         joint_velocity_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
