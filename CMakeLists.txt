@@ -22,7 +22,15 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 add_executable(ur10_velocity_controller_node src/ur10_velocity_controller_node.cpp)
-ament_target_dependencies(ur10_velocity_controller_node rclcpp sensor_msgs std_msgs)
+ament_target_dependencies(ur10_velocity_controller_node
+  rclcpp
+  sensor_msgs std_msgs
+  sensor_msgs
+  std_msgs
+  geometry_msgs
+  moveit_ros_planning_interface
+
+  )
 
 add_executable(test_joint_state_publisher src/test_joint_state_publisher.cpp)
 ament_target_dependencies(test_joint_state_publisher rclcpp sensor_msgs)
