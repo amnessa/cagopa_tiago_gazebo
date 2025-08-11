@@ -15,6 +15,12 @@ class JacobianCalculatorNode : public rclcpp::Node
 public:
     JacobianCalculatorNode() : Node("jacobian_calculator_node", rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true))
     {
+        // Constructor is now intentionally simple.
+    }
+
+    // New init method to be called after the node is a shared_ptr
+    void init()
+    {
         joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
             "/joint_states", 10, std::bind(&JacobianCalculatorNode::joint_state_callback, this, std::placeholders::_1));
 
@@ -109,6 +115,7 @@ int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<JacobianCalculatorNode>();
+    node->init(); // Call init() here
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;
