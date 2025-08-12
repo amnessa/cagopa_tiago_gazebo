@@ -4,6 +4,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <Eigen/Dense>
 #include <memory>
+#include <limits>
 
 // MoveIt Includes
 #include <moveit/robot_model_loader/robot_model_loader.h>
@@ -25,9 +26,13 @@ public:
             "/isaac_joint_states", 10, std::bind(&JacobianCalculatorNode::joint_state_callback, this, std::placeholders::_1));
 
         joint_velocity_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/joint_velocities", 10);
+        joint_state_cmd_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/isaac_joint_commands", 10);
 
-        end_effector_velocity_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-            "/end_effector_velocity", 10, std::bind(&JacobianCalculatorNode::velocity_callback, this, std::placeholders::_1));
+        // Parameters
+        this->declare_parameter<std::string>("planning_group", "ur_manipulator");
+        this->declare_parameter<std::string>("end_effector_link", "wrist_3_link");
+        this->declare_parameter<double>("min_manipulability", 0.02);
+        min_manipulability_ = this->get_parameter("min_manipulability").as_double();
 
         // Initialize MoveIt components
         RCLCPP_INFO(this->get_logger(), "Loading robot model...");
@@ -45,8 +50,6 @@ public:
         robot_state_->setToDefaultValues();
 
         // Get planning group and end-effector link from parameters or use defaults
-        this->declare_parameter<std::string>("planning_group", "ur_manipulator");
-        this->declare_parameter<std::string>("end_effector_link", "wrist_3_link");
         planning_group_name_ = this->get_parameter("planning_group").as_string();
         end_effector_link_name_ = this->get_parameter("end_effector_link").as_string();
 
@@ -88,18 +91,39 @@ private:
     {
         if (!robot_state_ || !joint_model_group_)
         {
-            RCLCPP_WARN(this->get_logger(), "Robot model not ready yet.");
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "Robot model not ready yet.");
             return;
         }
 
         Eigen::MatrixXd jacobian = calculate_jacobian();
+        if (jacobian.rows() != 6)
+        {
+            RCLCPP_WARN(this->get_logger(), "Unexpected Jacobian size %ldx%ld", jacobian.rows(), jacobian.cols());
+            return;
+        }
+
+        // Manipulability (only compute when square 6x6)
+        if (jacobian.cols() == 6)
+        {
+            Eigen::MatrixXd JJt = jacobian * jacobian.transpose();
+            double detJJt = JJt.determinant();
+            if (detJJt > 0.0)
+            {
+                double manipulability = std::sqrt(detJJt);
+                last_manipulability_ = manipulability;
+                RCLCPP_DEBUG(this->get_logger(), "Manipulability: %.5f", manipulability);
+            }
+        }
+
         Eigen::Matrix<double, 6, 1> end_effector_velocity;
         end_effector_velocity << msg->linear.x, msg->linear.y, msg->linear.z,
                                  msg->angular.x, msg->angular.y, msg->angular.z;
 
-        Eigen::MatrixXd joint_velocities = jacobian.completeOrthogonalDecomposition().pseudoInverse() * end_effector_velocity;
+        // Pseudoinverse
+        Eigen::MatrixXd pinv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
+        Eigen::VectorXd joint_velocities = pinv * end_effector_velocity;
 
-        // Create and populate the message to publish
+        // Publish raw array (legacy)
         std_msgs::msg::Float64MultiArray joint_velocity_msg;
         joint_velocity_msg.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
         joint_velocity_msg.layout.dim[0].size = joint_velocities.size();
@@ -107,9 +131,18 @@ private:
         joint_velocity_msg.layout.dim[0].label = "joint_velocities";
         joint_velocity_msg.data.resize(joint_velocities.size());
         Eigen::VectorXd::Map(&joint_velocity_msg.data[0], joint_velocities.size()) = joint_velocities;
-
-        // Publish the message
         joint_velocity_pub_->publish(joint_velocity_msg);
+
+        // Publish JointState with velocities (Isaac expects JointState)
+        sensor_msgs::msg::JointState js;
+        js.header.stamp = this->now();
+        const auto & names = joint_model_group_->getVariableNames();
+        js.name = names;  // expects order matching robot
+        js.velocity.assign(joint_velocities.data(), joint_velocities.data() + joint_velocities.size());
+        // Fill position with NaN to indicate velocity control (per Isaac / doc guidance)
+        js.position.resize(js.velocity.size(), std::numeric_limits<double>::quiet_NaN());
+        js.effort.resize(js.velocity.size(), 0.0);
+        joint_state_cmd_pub_->publish(js);
     }
 
     Eigen::MatrixXd calculate_jacobian()
@@ -128,6 +161,9 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr end_effector_velocity_sub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_velocity_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_cmd_pub_;
+    double min_manipulability_{0.02};
+    double last_manipulability_{0.0};
 
     // MoveIt Members
     std::shared_ptr<robot_model_loader::RobotModelLoader> robot_model_loader_;

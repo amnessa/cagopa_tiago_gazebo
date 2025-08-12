@@ -1,6 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
+#include <geometry_msgs/msg/point.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <message_filters/subscriber.h>
@@ -21,10 +22,15 @@ public:
     {
         // Publisher for the 3D position of the ball (will not be used in this mode)
         publisher_ = this->create_publisher<geometry_msgs::msg::PointStamped>("/ball_position", 10);
-        // Publisher for the debug image with bounding box
         debug_image_pub_ = this->create_publisher<sensor_msgs::msg::Image>("/ball_tracker/debug_image", 10);
+        target_pixel_pub_ = this->create_publisher<geometry_msgs::msg::Point>("/target_pixel_coords", 10);
 
-        // Subscribers for image and depth using message filters
+        min_area_ = this->declare_parameter<int>("min_area", 150);
+        ema_alpha_ = this->declare_parameter<double>("ema_alpha", 0.35);
+        depth_median_window_ = this->declare_parameter<int>("depth_median_window", 5);
+        depth_default_ = this->declare_parameter<double>("depth_default", 0.8);
+        depth_scale_ = this->declare_parameter<double>("depth_scale", 0.001); // if 16UC1 in millimeters
+
         image_sub_.subscribe(this, "/rsd455_img");
         depth_sub_.subscribe(this, "/rsd455_depth");
         // NOTE: cam_info_sub_ is disabled as the topic is not available
@@ -86,21 +92,127 @@ private:
                     return cv::contourArea(a) < cv::contourArea(b);
                 });
 
-            cv::Moments M = cv::moments(*largest_contour);
-            if (M.m00 > 0)
+            double area = cv::contourArea(*largest_contour);
+            if (area >= min_area_)
             {
-                cv::Point2f center(M.m10 / M.m00, M.m01 / M.m00);
-                cv::Rect bounding_box = cv::boundingRect(*largest_contour);
-                cv::rectangle(cv_ptr->image, bounding_box, cv::Scalar(0, 255, 0), 2);
-                cv::circle(cv_ptr->image, center, 5, cv::Scalar(0, 0, 255), -1);
+                cv::Moments M = cv::moments(*largest_contour);
+                if (M.m00 > 0)
+                {
+                    cv::Point2f center(M.m10 / M.m00, M.m01 / M.m00);
+                    cv::Rect bounding_box = cv::boundingRect(*largest_contour);
+
+                    // Depth extraction (robust: median over small ROI)
+                    double depth = extractDepth(depth_msg, center);
+                    if (std::isnan(depth) || depth <= 0.01) depth = depth_default_;
+
+                    // EMA smoothing
+                    if (!have_prev_)
+                    {
+                        u_ema_ = center.x;
+                        v_ema_ = center.y;
+                        z_ema_ = depth;
+                        have_prev_ = true;
+                    }
+                    else
+                    {
+                        u_ema_ = ema_alpha_ * center.x + (1.0 - ema_alpha_) * u_ema_;
+                        v_ema_ = ema_alpha_ * center.y + (1.0 - ema_alpha_) * v_ema_;
+                        z_ema_ = ema_alpha_ * depth     + (1.0 - ema_alpha_) * z_ema_;
+                    }
+
+                    geometry_msgs::msg::Point pt;
+                    pt.x = u_ema_;
+                    pt.y = v_ema_;
+                    pt.z = z_ema_;
+                    target_pixel_pub_->publish(pt);
+
+                    cv::rectangle(cv_ptr->image, bounding_box, cv::Scalar(0, 255, 0), 2);
+                    cv::circle(cv_ptr->image, center, 5, cv::Scalar(0, 0, 255), -1);
+                    cv::putText(cv_ptr->image,
+                                "u=" + std::to_string(int(pt.x)) +
+                                " v=" + std::to_string(int(pt.y)) +
+                                " z=" + cv::format("%.2f", pt.z),
+                                center + cv::Point2f(10, -10),
+                                cv::FONT_HERSHEY_SIMPLEX, 0.4, {0,255,0}, 1);
+                }
             }
         }
-        // Publish the debug image regardless of whether a ball was found
         debug_image_pub_->publish(*cv_ptr->toImageMsg());
+    }
+
+    double extractDepth(const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg,
+                        const cv::Point2f& center)
+    {
+        // Convert depth
+        cv_bridge::CvImageConstPtr depth_ptr;
+        try
+        {
+            if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+                depth_ptr = cv_bridge::toCvShare(depth_msg, sensor_msgs::image_encodings::TYPE_16UC1);
+            else
+                depth_ptr = cv_bridge::toCvShare(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1);
+        }
+        catch(...)
+        {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+
+        int u = std::clamp<int>(int(std::round(center.x)), 0, depth_msg->width  - 1);
+        int v = std::clamp<int>(int(std::round(center.y)), 0, depth_msg->height - 1);
+
+        // ROI window
+        int w = std::min(5, int(depth_msg->width));
+        int h = std::min(5, int(depth_msg->height));
+        int u0 = std::max(0, u - w/2);
+        int v0 = std::max(0, v - h/2);
+        int u1 = std::min<int>(depth_msg->width -1, u0 + w -1);
+        int v1 = std::min<int>(depth_msg->height-1, v0 + h -1);
+
+        std::vector<double> samples;
+        samples.reserve(w*h);
+
+        if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+        {
+            for (int y = v0; y <= v1; ++y)
+            {
+                const uint16_t* row = depth_ptr->image.ptr<uint16_t>(y);
+                for (int x = u0; x <= u1; ++x)
+                {
+                    uint16_t raw = row[x];
+                    if (raw > 0) samples.push_back(raw * depth_scale_);
+                }
+            }
+        }
+        else
+        {
+            for (int y = v0; y <= v1; ++y)
+            {
+                const float* row = depth_ptr->image.ptr<float>(y);
+                for (int x = u0; x <= u1; ++x)
+                {
+                    float val = row[x];
+                    if (std::isfinite(val) && val > 0.0f) samples.push_back(double(val));
+                }
+            }
+        }
+
+        if (samples.empty()) return std::numeric_limits<double>::quiet_NaN();
+        std::nth_element(samples.begin(),
+                         samples.begin() + samples.size()/2,
+                         samples.end());
+        return samples[samples.size()/2];
     }
 
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr debug_image_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr target_pixel_pub_;
+    int min_area_;
+    double ema_alpha_;
+    int depth_median_window_;
+    double depth_default_;
+    double depth_scale_;
+    bool have_prev_{false};
+    double u_ema_{0}, v_ema_{0}, z_ema_{0};
 
     message_filters::Subscriber<sensor_msgs::msg::Image> image_sub_;
     message_filters::Subscriber<sensor_msgs::msg::Image> depth_sub_;
