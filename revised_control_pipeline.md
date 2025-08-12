@@ -74,8 +74,8 @@ Goal: Create the core control node that implements the search-and-track logic us
 
         Action: At every time step (i.e., for each new camera frame), the node solves a small optimization problem to find the joint velocities q_dot that minimize a cost function.
 
-        Cost Function:
-        Cost = w₁ * ||pixel_error||² + w₂ * (1/manipulability) + w₃ * ||dist_to_obj||²
+        **Cost Function:**
+        **Cost = w₁ * ||pixel_error||² + w₂ * (1/manipulability) + w₃ * ||dist_to_obj||²**
 
             ||pixel_error||²: The primary objective. This term drives the ball's current pixel coordinates toward the center of the image.
 

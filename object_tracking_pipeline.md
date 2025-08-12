@@ -41,7 +41,7 @@ The goal of this phase is to get all the software components installed and commu
 
         Clone the official Universal Robots ROS 2 description: git clone -b humble https://github.com/UniversalRobots/Universal_Robots_ROS2_Description.git. This gives you the UR10's URDF (robot model).
 
-TODO:        Clone the ROS 2 drivers: git clone -b humble https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver.git. We will use the "fake hardware" mode for simulation.
+✅(not needed)        Clone the ROS 2 drivers: git clone -b humble https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver.git. We will use the "fake hardware" mode for simulation.
 
         Build your workspace with colcon build.
 
@@ -84,11 +84,11 @@ TODO:        Clone the ROS 2 drivers: git clone -b humble https://github.com/Uni
 
         Test MoveIt2: In the RViz MotionPlanning panel, select your ur_manipulator group. Drag the interactive orange sphere (the end-effector goal) to a new position. Click Plan. You should see a planned trajectory. Click Execute. The robot in RViz and Isaac Sim should perform the motion.
 
-TODO: Phase 2: Finding the Optimal Starting Pose
+✅ Phase 2: Finding the Optimal Starting Pose
 
 Before tracking, the robot should move to a "ready" pose that gives it the best ability to follow the object. This is a pose of high manipulability, far from singularities.
 
-1. The Concept: Manipulability
+✅ 1. The Concept: Manipulability
 
     The Jacobian matrix (J) maps joint velocities to end-effector velocities.
 
@@ -96,7 +96,7 @@ Before tracking, the robot should move to a "ready" pose that gives it the best 
 
     The manipulability index (μ = sqrt(det(J * J^T))) is a number that quantifies this. A high value means the robot can move easily in all directions. A value of 0 means it's at a singularity.
 
-2. Implementation Plan:
+✅ 2. Implementation Plan:
 
     Action: Create a Python node that samples different robot configurations, calculates their manipulability, and finds the best one.
 
@@ -112,7 +112,7 @@ Before tracking, the robot should move to a "ready" pose that gives it the best 
 
         This "optimal" configuration becomes your go-to starting pose for the tracking task.
 
-TODO: Phase 3: Object Simulation & Perception
+✅ Phase 3: Object Simulation & Perception
 
 The robot needs to "see" the object to track it. We will simulate this entire perception pipeline.
 
@@ -146,7 +146,7 @@ The robot needs to "see" the object to track it. We will simulate this entire pe
 
             This node will publish the ball's (x, y) pixel coordinates to a new topic, e.g., /target_position.
 
-TODO: Phase 4: Implementing the Real-Time Tracking Controller
+✅ Phase 4: Implementing the Real-Time Tracking Controller
 
 This is the core of the project. We will implement an Image-Based Visual Servoing (IBVS) controller. We will NOT use MoveIt for this part. MoveIt is for planning, not for high-frequency, reactive control.
 

@@ -79,19 +79,49 @@ def generate_launch_description():
         package="cagopa_tiago_gazebo",
         executable="jacobian_calculator_node",
         output="screen",
-        parameters=[robot_description_parameters],
+        parameters=[robot_description_parameters,
+                    {
+                        "control_mode": "position",
+                        "posture_gain": 0.4,
+                        "use_nullspace_posture": True,
+                        "slowdown_mu_threshold": 0.04,
+                        "damping_mu_reference": 0.05,
+                        "w2_manipulability": 1.0,
+                        "manipulability_gain": 0.4
+                    }],
     )
 
     ur10_velocity_controller_node = Node(
         package="cagopa_tiago_gazebo",
         executable="ur10_velocity_controller_node",
         output="screen",
+        parameters=[{
+            "image_width": 640,
+            "image_height": 480, # change this values according to your camera calibration
+            "fx": 600.0,
+            "fy": 600.0,
+            "depth_target": 0.8,
+            "k_pixel_gain": 0.6,
+            "k_depth_gain": 0.5,
+            "w1_pixel": 1.0,
+            "w3_depth": 1.0
+        }]
+    )
+
+    ball_tracker_node = Node(
+        package="cagopa_tiago_gazebo",
+        executable="ball_tracker_node",
+        output="screen",
+        parameters=[{
+            "min_area": 120
+        }]
     )
 
     nodes = [
         robot_state_publisher_node,
         jacobian_calculator_node,
         ur10_velocity_controller_node,
+        ball_tracker_node,
     ]
 
     return LaunchDescription(declared_arguments + nodes)

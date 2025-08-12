@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 #include <memory>
 #include <limits>
+#include <unordered_map>
 
 // MoveIt Includes
 #include <moveit/robot_model_loader/robot_model_loader.h>
@@ -25,14 +26,30 @@ public:
         joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
             "/isaac_joint_states", 10, std::bind(&JacobianCalculatorNode::joint_state_callback, this, std::placeholders::_1));
 
+        end_effector_velocity_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
+            "/end_effector_velocity", 10, std::bind(&JacobianCalculatorNode::velocity_callback, this, std::placeholders::_1));  // ADDED
+
         joint_velocity_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/joint_velocities", 10);
         joint_state_cmd_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/isaac_joint_commands", 10);
 
-        // Parameters
         this->declare_parameter<std::string>("planning_group", "ur_manipulator");
         this->declare_parameter<std::string>("end_effector_link", "wrist_3_link");
         this->declare_parameter<double>("min_manipulability", 0.02);
+        this->declare_parameter<std::string>("control_mode", "position"); // "position" or "velocity"
+        control_mode_ = this->get_parameter("control_mode").as_string();
         min_manipulability_ = this->get_parameter("min_manipulability").as_double();
+        this->declare_parameter<double>("posture_gain", 0.4);
+        this->declare_parameter<bool>("use_nullspace_posture", true);
+        this->declare_parameter<double>("slowdown_mu_threshold", 0.04);
+        this->declare_parameter<double>("damping_mu_reference", 0.05); // target μ where damping starts
+        this->declare_parameter<double>("w2_manipulability", 1.0);
+        this->declare_parameter<double>("manipulability_gain", 0.4);
+        posture_gain_ = this->get_parameter("posture_gain").as_double();
+        use_nullspace_posture_ = this->get_parameter("use_nullspace_posture").as_bool();
+        slowdown_mu_threshold_ = this->get_parameter("slowdown_mu_threshold").as_double();
+        damping_mu_ref_ = this->get_parameter("damping_mu_reference").as_double();
+        w2_manip_ = this->get_parameter("w2_manipulability").as_double();
+        manip_gain_ = this->get_parameter("manipulability_gain").as_double();
 
         // Initialize MoveIt components
         RCLCPP_INFO(this->get_logger(), "Loading robot model...");
@@ -63,6 +80,7 @@ public:
 private:
     void joint_state_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
+        last_joint_state_ = *msg;  // store for position integration
         if (robot_state_)
         {
             // Filter the incoming joint state message to only include joints known to our robot model.
@@ -95,54 +113,140 @@ private:
             return;
         }
 
-        Eigen::MatrixXd jacobian = calculate_jacobian();
-        if (jacobian.rows() != 6)
-        {
-            RCLCPP_WARN(this->get_logger(), "Unexpected Jacobian size %ldx%ld", jacobian.rows(), jacobian.cols());
+        if (last_joint_state_.name.empty()) {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "No joint state yet to base command on.");
             return;
         }
 
-        // Manipulability (only compute when square 6x6)
-        if (jacobian.cols() == 6)
-        {
+        Eigen::MatrixXd jacobian = calculate_jacobian();
+        if (jacobian.rows() != 6) { RCLCPP_WARN(this->get_logger(), "Unexpected Jacobian size %ldx%ld", jacobian.rows(), jacobian.cols()); return; }
+
+        // Compute manipulability μ
+        double mu = 0.0;
+        if (jacobian.cols() >= 6) {
             Eigen::MatrixXd JJt = jacobian * jacobian.transpose();
             double detJJt = JJt.determinant();
-            if (detJJt > 0.0)
-            {
-                double manipulability = std::sqrt(detJJt);
-                last_manipulability_ = manipulability;
-                RCLCPP_DEBUG(this->get_logger(), "Manipulability: %.5f", manipulability);
+            if (detJJt > 0.0) {
+                mu = std::sqrt(detJJt);
+                last_manipulability_ = mu;
             }
         }
 
-        Eigen::Matrix<double, 6, 1> end_effector_velocity;
-        end_effector_velocity << msg->linear.x, msg->linear.y, msg->linear.z,
-                                 msg->angular.x, msg->angular.y, msg->angular.z;
+        // Build damped pseudoinverse: λ grows as μ drops
+        double lambda = 0.0;
+        if (mu < damping_mu_ref_) {
+            double r = std::clamp(mu / damping_mu_ref_, 0.0, 1.0);
+            lambda = (1.0 - r) * 0.08; // tune base damping
+        }
+        Eigen::MatrixXd Jt = jacobian.transpose();
+        Eigen::MatrixXd I6 = Eigen::MatrixXd::Identity(6,6);
+        Eigen::MatrixXd pinv;
+        if (lambda > 1e-8) {
+            Eigen::MatrixXd JJt_damped = jacobian * Jt + (lambda * lambda) * I6;
+            pinv = Jt * JJt_damped.ldlt().solve(Eigen::MatrixXd::Identity(6,6));
+        } else {
+            pinv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
+        }
 
-        // Pseudoinverse
-        Eigen::MatrixXd pinv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
-        Eigen::VectorXd joint_velocities = pinv * end_effector_velocity;
+        Eigen::Matrix<double,6,1> v;
+        v << msg->linear.x, msg->linear.y, msg->linear.z,
+             msg->angular.x, msg->angular.y, msg->angular.z;
 
-        // Publish raw array (legacy)
-        std_msgs::msg::Float64MultiArray joint_velocity_msg;
-        joint_velocity_msg.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
-        joint_velocity_msg.layout.dim[0].size = joint_velocities.size();
-        joint_velocity_msg.layout.dim[0].stride = 1;
-        joint_velocity_msg.layout.dim[0].label = "joint_velocities";
-        joint_velocity_msg.data.resize(joint_velocities.size());
-        Eigen::VectorXd::Map(&joint_velocity_msg.data[0], joint_velocities.size()) = joint_velocities;
-        joint_velocity_pub_->publish(joint_velocity_msg);
+        // Primary joint velocity
+        Eigen::VectorXd qdot_primary = pinv * v;
 
-        // Publish JointState with velocities (Isaac expects JointState)
-        sensor_msgs::msg::JointState js;
-        js.header.stamp = this->now();
+        // Slowdown if manipulability very low
+        if (mu > 1e-8 && mu < slowdown_mu_threshold_) {
+            double scale = mu / slowdown_mu_threshold_; // (0,1)
+            qdot_primary *= scale;
+        }
+
+        // Finite-difference gradient of manipulability (grad_mu)
+        Eigen::VectorXd grad_mu;
+        if (w2_manip_ > 1e-6 && mu > 1e-8) {
+            grad_mu = compute_manipulability_gradient(1e-4); // step
+        }
+
+        Eigen::VectorXd qdot = qdot_primary;
+
+        // Nullspace projector
+        Eigen::MatrixXd N = Eigen::MatrixXd::Identity(qdot_primary.size(), qdot_primary.size()) - pinv * jacobian;
+
+        // Manipulability ascent term (reduces cost w2*(1/mu))
+        if (w2_manip_ > 1e-6 && mu > 1e-8 && grad_mu.size() == qdot.size()) {
+            // Cost term derivative for w2*(1/mu) is -w2/ mu^2 * grad_mu
+            Eigen::VectorXd qdot_mu = (manip_gain_ * w2_manip_ / (mu * mu)) * grad_mu;
+            qdot += N * qdot_mu;
+        }
+
+        // Optional posture term
+        if (use_nullspace_posture_) {
+            const std::vector<std::string>& names = joint_model_group_->getVariableNames();
+            Eigen::VectorXd q(names.size());
+            Eigen::VectorXd q_mid(names.size());
+            for (size_t i=0;i<names.size();++i) {
+                int idx = robot_state_->getVariableIndex(names[i]);
+                q[i] = robot_state_->getVariablePosition(names[i]);
+                const moveit::core::JointModel* jm = robot_state_->getJointModel(names[i]);
+                const auto& bounds = jm->getVariableBounds(names[i]);
+                double low = bounds.min_position_;
+                double high = bounds.max_position_;
+                q_mid[i] = (std::isfinite(low) && std::isfinite(high) && high>low) ? 0.5*(low+high) : q[i];
+            }
+            Eigen::VectorXd posture_err = q_mid - q;
+            qdot += posture_gain_ * N * posture_err;
+        }
+
+        // Publish raw velocities (diagnostic / chaining)
+        std_msgs::msg::Float64MultiArray vel_arr;
+        vel_arr.layout.dim.emplace_back();
+        vel_arr.layout.dim[0].label="joint_velocities";
+        vel_arr.layout.dim[0].size = qdot.size();
+        vel_arr.layout.dim[0].stride = 1;
+        vel_arr.data.assign(qdot.data(), qdot.data()+qdot.size());
+        joint_velocity_pub_->publish(vel_arr);
+
+        // Build JointState command
+        sensor_msgs::msg::JointState cmd;
+        cmd.header.stamp = this->now();
         const auto & names = joint_model_group_->getVariableNames();
-        js.name = names;  // expects order matching robot
-        js.velocity.assign(joint_velocities.data(), joint_velocities.data() + joint_velocities.size());
-        // Fill position with NaN to indicate velocity control (per Isaac / doc guidance)
-        js.position.resize(js.velocity.size(), std::numeric_limits<double>::quiet_NaN());
-        js.effort.resize(js.velocity.size(), 0.0);
-        joint_state_cmd_pub_->publish(js);
+        cmd.name = names;
+
+        if (control_mode_ == "velocity") {
+            // velocity mode (may be ignored by Isaac if not configured)
+            cmd.velocity.assign(qdot.data(), qdot.data()+qdot.size());
+            // leave positions empty or copy current
+            for (size_t i=0;i<qdot.size();++i) cmd.position.push_back(std::numeric_limits<double>::quiet_NaN());
+        } else {
+            // position integration
+            // map current positions
+            std::vector<double> current;
+            current.reserve(names.size());
+            // create lookup
+            std::unordered_map<std::string,double> last_pos_map;
+            for (size_t i=0;i<last_joint_state_.name.size();++i)
+                last_pos_map[last_joint_state_.name[i]] = last_joint_state_.position[i];
+
+            for (auto & n : names) {
+                auto it = last_pos_map.find(n);
+                current.push_back(it!=last_pos_map.end()? it->second : 0.0);
+            }
+
+            // simple dt assumption (or compute from timestamp)
+            rclcpp::Time now = this->now();
+            double dt = (last_vel_time_.nanoseconds()>0) ?
+                (now - last_vel_time_).seconds() : default_dt_;
+            last_vel_time_ = now;
+
+            std::vector<double> new_pos(current.size());
+            for (size_t i=0;i<current.size();++i)
+                new_pos[i] = current[i] + qdot[i]*dt;
+
+            cmd.position = new_pos;
+            cmd.velocity.assign(qdot.data(), qdot.data()+qdot.size()); // optional
+        }
+
+        joint_state_cmd_pub_->publish(cmd);
     }
 
     Eigen::MatrixXd calculate_jacobian()
@@ -156,6 +260,52 @@ private:
             reference_point_position,
             jacobian);
         return jacobian;
+    }
+
+    Eigen::VectorXd compute_manipulability_gradient(double h)
+    {
+        const auto & names = joint_model_group_->getVariableNames();
+        Eigen::VectorXd grad(names.size());
+        // Store baseline
+        double mu0 = last_manipulability_;
+        if (mu0 <= 0.0) {
+            grad.setZero();
+            return grad;
+        }
+        // Copy robot state
+        moveit::core::RobotState backup = *robot_state_;
+        for (size_t i=0;i<names.size(); ++i) {
+            int idx = robot_state_->getVariableIndex(names[i]);
+            double q_orig = robot_state_->getVariablePosition(names[i]);
+            // forward
+            robot_state_->setVariablePosition(names[i], q_orig + h);
+            robot_state_->updateLinkTransforms();
+            Eigen::MatrixXd Jp = calculate_jacobian();
+            double mu_p = 0.0;
+            if (Jp.rows()==6) {
+                Eigen::MatrixXd JJt = Jp * Jp.transpose();
+                double detJJt = JJt.determinant();
+                if (detJJt > 0.0) mu_p = std::sqrt(detJJt);
+            }
+            // backward
+            robot_state_->setVariablePosition(names[i], q_orig - h);
+            robot_state_->updateLinkTransforms();
+            Eigen::MatrixXd Jm = calculate_jacobian();
+            double mu_m = 0.0;
+            if (Jm.rows()==6) {
+                Eigen::MatrixXd JJt = Jm * Jm.transpose();
+                double detJJt = JJt.determinant();
+                if (detJJt > 0.0) mu_m = std::sqrt(detJJt);
+            }
+            // central diff
+            grad[i] = (mu_p - mu_m) / (2.0 * h);
+            // restore joint for next iteration
+            robot_state_->setVariablePosition(names[i], q_orig);
+        }
+        // Restore full state
+        *robot_state_ = backup;
+        robot_state_->updateLinkTransforms();
+        return grad;
     }
 
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
@@ -172,6 +322,19 @@ private:
     const moveit::core::JointModelGroup* joint_model_group_;
     std::string planning_group_name_;
     std::string end_effector_link_name_;
+
+    std::string control_mode_;
+    sensor_msgs::msg::JointState last_joint_state_;
+    rclcpp::Time last_vel_time_;
+    double default_dt_{0.1};
+
+    // New members for nullspace and damping
+    double posture_gain_{0.4};
+    bool use_nullspace_posture_{true};
+    double slowdown_mu_threshold_{0.04};
+    double damping_mu_ref_{0.05};
+    double w2_manip_{1.0};
+    double manip_gain_{0.4};
 };
 
 int main(int argc, char * argv[])

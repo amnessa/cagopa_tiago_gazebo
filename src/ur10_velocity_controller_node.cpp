@@ -33,7 +33,6 @@ public:
         target_sub_ = this->create_subscription<geometry_msgs::msg::Point>(
             "/target_pixel_coords", 10, std::bind(&UR10EndEffectorControllerNode::target_callback, this, std::placeholders::_1));
 
-        // Parameters
         image_width_  = this->declare_parameter<int>("image_width", 640);
         image_height_ = this->declare_parameter<int>("image_height", 480);
         fx_ = this->declare_parameter<double>("fx", 600.0);
@@ -44,11 +43,13 @@ public:
         k_depth_ = this->declare_parameter<double>("k_depth_gain", 0.5);
         timeout_sec_ = this->declare_parameter<double>("lost_timeout", 0.5);
         min_manipulability_ = this->declare_parameter<double>("min_manipulability", 0.02);
+        w1_pixel_ = this->declare_parameter<double>("w1_pixel", 1.0);
+        w3_depth_ = this->declare_parameter<double>("w3_depth", 1.0);
 
         control_timer_ = this->create_wall_timer(
             100ms, std::bind(&UR10EndEffectorControllerNode::control_loop, this));
 
-        RCLCPP_INFO(this->get_logger(), "UR10 End-Effector Controller started (servoing enabled).");
+        RCLCPP_INFO(this->get_logger(), "UR10 End-Effector Controller started (cost weights active).");
     }
 
 private:
@@ -113,11 +114,15 @@ private:
 
         double eu = (u - u0);
         double ev = (v - v0);
+        double depth_err = (Z - depth_target_);
 
-        // Simple IBVS proportional mapping (linear velocities only)
-        twist.linear.x = -k_pixel_ * (eu / fx_) * Z;
-        twist.linear.y = -k_pixel_ * (ev / fy_) * Z;
-        twist.linear.z =  k_depth_ * (Z - depth_target_);
+        // Weighted IBVS style (w1, w3 just scale gains)
+        double pixel_gain = k_pixel_ * w1_pixel_;
+        double depth_gain = k_depth_ * w3_depth_;
+
+        twist.linear.x = -pixel_gain * (eu / fx_) * Z;
+        twist.linear.y = -pixel_gain * (ev / fy_) * Z;
+        twist.linear.z =  depth_gain * depth_err;
 
         // No rotation yet
         twist.angular.x = 0.0;
@@ -146,6 +151,8 @@ private:
     double k_pixel_, k_depth_;
     double timeout_sec_;
     double min_manipulability_;
+
+    double w1_pixel_{1.0}, w3_depth_{1.0};
 
     double time_;
 };
