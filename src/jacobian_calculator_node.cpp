@@ -6,6 +6,8 @@
 #include <memory>
 #include <limits>
 #include <unordered_map>
+#include <algorithm>  // added for std::clamp
+#include <type_traits>
 
 // MoveIt Includes
 #include <moveit/robot_model_loader/robot_model_loader.h>
@@ -15,66 +17,76 @@
 class JacobianCalculatorNode : public rclcpp::Node
 {
 public:
-    JacobianCalculatorNode() : Node("jacobian_calculator_node", rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true))
+    // Remove automatically_declare_parameters_from_overrides(true)
+    JacobianCalculatorNode() : Node("jacobian_calculator_node")
     {
-        // Constructor is now intentionally simple.
+        // Constructor minimal; full setup in init()
     }
 
-    // New init method to be called after the node is a shared_ptr
     void init()
     {
-        joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
-            "/isaac_joint_states", 10, std::bind(&JacobianCalculatorNode::joint_state_callback, this, std::placeholders::_1));
+        // Safe declare helper
+        auto ensure_param_str = [this](const std::string & name, const std::string & def) {
+            if (!this->has_parameter(name)) this->declare_parameter<std::string>(name, def);
+        };
+        auto ensure_param_double = [this](const std::string & name, double def) {
+            if (!this->has_parameter(name)) this->declare_parameter<double>(name, def);
+        };
+        auto ensure_param_bool = [this](const std::string & name, bool def) {
+            if (!this->has_parameter(name)) this->declare_parameter<bool>(name, def);
+        };
 
-        end_effector_velocity_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-            "/end_effector_velocity", 10, std::bind(&JacobianCalculatorNode::velocity_callback, this, std::placeholders::_1));  // ADDED
+        ensure_param_str("planning_group", "ur_manipulator");
+        ensure_param_str("end_effector_link", "wrist_3_link");
+        ensure_param_double("min_manipulability", 0.02);
+        ensure_param_str("control_mode", "position");
+        ensure_param_double("posture_gain", 0.4);
+        ensure_param_bool("use_nullspace_posture", true);
+        ensure_param_double("slowdown_mu_threshold", 0.04);
+        ensure_param_double("damping_mu_reference", 0.05);
+        ensure_param_double("w2_manipulability", 1.0);
+        ensure_param_double("manipulability_gain", 0.4);
 
-        joint_velocity_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/joint_velocities", 10);
-        joint_state_cmd_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/isaac_joint_commands", 10);
-
-        this->declare_parameter<std::string>("planning_group", "ur_manipulator");
-        this->declare_parameter<std::string>("end_effector_link", "wrist_3_link");
-        this->declare_parameter<double>("min_manipulability", 0.02);
-        this->declare_parameter<std::string>("control_mode", "position"); // "position" or "velocity"
-        control_mode_ = this->get_parameter("control_mode").as_string();
-        min_manipulability_ = this->get_parameter("min_manipulability").as_double();
-        this->declare_parameter<double>("posture_gain", 0.4);
-        this->declare_parameter<bool>("use_nullspace_posture", true);
-        this->declare_parameter<double>("slowdown_mu_threshold", 0.04);
-        this->declare_parameter<double>("damping_mu_reference", 0.05); // target μ where damping starts
-        this->declare_parameter<double>("w2_manipulability", 1.0);
-        this->declare_parameter<double>("manipulability_gain", 0.4);
-        posture_gain_ = this->get_parameter("posture_gain").as_double();
+        planning_group_name_   = this->get_parameter("planning_group").as_string();
+        end_effector_link_name_= this->get_parameter("end_effector_link").as_string();
+        min_manipulability_    = this->get_parameter("min_manipulability").as_double();
+        control_mode_          = this->get_parameter("control_mode").as_string();
+        posture_gain_          = this->get_parameter("posture_gain").as_double();
         use_nullspace_posture_ = this->get_parameter("use_nullspace_posture").as_bool();
         slowdown_mu_threshold_ = this->get_parameter("slowdown_mu_threshold").as_double();
-        damping_mu_ref_ = this->get_parameter("damping_mu_reference").as_double();
-        w2_manip_ = this->get_parameter("w2_manipulability").as_double();
-        manip_gain_ = this->get_parameter("manipulability_gain").as_double();
+        damping_mu_ref_        = this->get_parameter("damping_mu_reference").as_double();
+        w2_manip_              = this->get_parameter("w2_manipulability").as_double();
+        manip_gain_            = this->get_parameter("manipulability_gain").as_double();
 
-        // Initialize MoveIt components
         RCLCPP_INFO(this->get_logger(), "Loading robot model...");
         robot_model_loader_ = std::make_shared<robot_model_loader::RobotModelLoader>(shared_from_this(), "robot_description");
         robot_model_ = robot_model_loader_->getModel();
-
         if (!robot_model_) {
-            RCLCPP_FATAL(this->get_logger(), "Failed to load robot model. Is the robot_description parameter set?");
+            RCLCPP_FATAL(this->get_logger(), "Failed to load robot model (robot_description missing?)");
             rclcpp::shutdown();
             return;
         }
-        RCLCPP_INFO(this->get_logger(), "Robot model loaded successfully.");
-
         robot_state_ = std::make_shared<moveit::core::RobotState>(robot_model_);
         robot_state_->setToDefaultValues();
-
-        // Get planning group and end-effector link from parameters or use defaults
-        planning_group_name_ = this->get_parameter("planning_group").as_string();
-        end_effector_link_name_ = this->get_parameter("end_effector_link").as_string();
-
         joint_model_group_ = robot_model_->getJointModelGroup(planning_group_name_);
         if (!joint_model_group_) {
             RCLCPP_FATAL(this->get_logger(), "Planning group '%s' not found.", planning_group_name_.c_str());
             rclcpp::shutdown();
+            return;
         }
+
+        joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
+            "/isaac_joint_states", 10,
+            std::bind(&JacobianCalculatorNode::joint_state_callback, this, std::placeholders::_1));
+
+        end_effector_velocity_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
+            "/end_effector_velocity", 10,
+            std::bind(&JacobianCalculatorNode::velocity_callback, this, std::placeholders::_1));
+
+        joint_velocity_pub_   = this->create_publisher<std_msgs::msg::Float64MultiArray>("/joint_velocities", 10);
+        joint_state_cmd_pub_  = this->create_publisher<sensor_msgs::msg::JointState>("/isaac_joint_commands", 10);
+
+        RCLCPP_INFO(this->get_logger(), "Jacobian calculator ready. control_mode=%s", control_mode_.c_str());
     }
 
 private:
@@ -185,7 +197,7 @@ private:
             Eigen::VectorXd q(names.size());
             Eigen::VectorXd q_mid(names.size());
             for (size_t i=0;i<names.size();++i) {
-                int idx = robot_state_->getVariableIndex(names[i]);
+                // removed getVariableIndex (not available in this MoveIt version)
                 q[i] = robot_state_->getVariablePosition(names[i]);
                 const moveit::core::JointModel* jm = robot_state_->getJointModel(names[i]);
                 const auto& bounds = jm->getVariableBounds(names[i]);
@@ -213,10 +225,9 @@ private:
         cmd.name = names;
 
         if (control_mode_ == "velocity") {
-            // velocity mode (may be ignored by Isaac if not configured)
             cmd.velocity.assign(qdot.data(), qdot.data()+qdot.size());
-            // leave positions empty or copy current
-            for (size_t i=0;i<qdot.size();++i) cmd.position.push_back(std::numeric_limits<double>::quiet_NaN());
+            for (Eigen::Index i=0; i<qdot.size(); ++i)
+                cmd.position.push_back(std::numeric_limits<double>::quiet_NaN());
         } else {
             // position integration
             // map current positions
@@ -266,18 +277,11 @@ private:
     {
         const auto & names = joint_model_group_->getVariableNames();
         Eigen::VectorXd grad(names.size());
-        // Store baseline
         double mu0 = last_manipulability_;
-        if (mu0 <= 0.0) {
-            grad.setZero();
-            return grad;
-        }
-        // Copy robot state
+        if (mu0 <= 0.0) { grad.setZero(); return grad; }
         moveit::core::RobotState backup = *robot_state_;
         for (size_t i=0;i<names.size(); ++i) {
-            int idx = robot_state_->getVariableIndex(names[i]);
             double q_orig = robot_state_->getVariablePosition(names[i]);
-            // forward
             robot_state_->setVariablePosition(names[i], q_orig + h);
             robot_state_->updateLinkTransforms();
             Eigen::MatrixXd Jp = calculate_jacobian();
@@ -287,7 +291,6 @@ private:
                 double detJJt = JJt.determinant();
                 if (detJJt > 0.0) mu_p = std::sqrt(detJJt);
             }
-            // backward
             robot_state_->setVariablePosition(names[i], q_orig - h);
             robot_state_->updateLinkTransforms();
             Eigen::MatrixXd Jm = calculate_jacobian();
@@ -297,12 +300,9 @@ private:
                 double detJJt = JJt.determinant();
                 if (detJJt > 0.0) mu_m = std::sqrt(detJJt);
             }
-            // central diff
             grad[i] = (mu_p - mu_m) / (2.0 * h);
-            // restore joint for next iteration
             robot_state_->setVariablePosition(names[i], q_orig);
         }
-        // Restore full state
         *robot_state_ = backup;
         robot_state_->updateLinkTransforms();
         return grad;
