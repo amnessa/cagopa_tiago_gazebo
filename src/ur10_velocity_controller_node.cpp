@@ -33,8 +33,8 @@ public:
         target_sub_ = this->create_subscription<geometry_msgs::msg::Point>(
             "/target_pixel_coords", 10, std::bind(&UR10EndEffectorControllerNode::target_callback, this, std::placeholders::_1));
 
-        image_width_  = this->declare_parameter<int>("image_width", 640);
-        image_height_ = this->declare_parameter<int>("image_height", 480);
+        image_width_  = this->declare_parameter<int>("image_width", 1280);
+        image_height_ = this->declare_parameter<int>("image_height", 720);
         fx_ = this->declare_parameter<double>("fx", 600.0);
         fy_ = this->declare_parameter<double>("fy", 600.0);
         depth_default_ = this->declare_parameter<double>("depth_default", 0.8);
