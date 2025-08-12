@@ -96,14 +96,14 @@ def generate_launch_description():
         executable="ur10_velocity_controller_node",
         output="screen",
         parameters=[{
-            "image_width": 640,
-            "image_height": 480, # change this values according to your camera calibration
+            "image_width": 1280,
+            "image_height": 720, # change this values according to your camera calibration
             "fx": 600.0,
             "fy": 600.0,
             "depth_target": 0.8,
             "k_pixel_gain": 0.6,
             "k_depth_gain": 0.5,
-            "w1_pixel": 1.0,
+            "w1_pixel": 2.0,
             "w3_depth": 1.0
         }]
     )
