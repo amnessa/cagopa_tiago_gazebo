@@ -1,5 +1,9 @@
+Main ros2 folder is father of cagopa_tiago_gazebo so we build all required packages like ur_config, cagopa_tiago_gazebo and others
+
 source /opt/ros/humble/setup.bash && colcon build
 to build
+
+also source ~/.bashrc
 
 ros-humble-rmw-cyclonedds-cpp or
 rmw_fastrtps_cpp package
@@ -12,6 +16,8 @@ apt update && apt install ros-humble-rmw-fastrtps-cpp ros-humble-control-msgs ro
 
 
 install everytime for docker
+
+Dont forget to source install/setup.bash after building
 
 https://docs.isaacsim.omniverse.nvidia.com/4.5.0/ros2_tutorials/tutorial_ros2_manipulation.html
 
