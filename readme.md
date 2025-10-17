@@ -1,4 +1,4 @@
-Main ros2 folder is father of cagopa_tiago_gazebo so we build all required packages like ur_config, cagopa_tiago_gazebo and others
+Main ros2 folder is tiago_isaac_sim so we build all required packages like ur_config, cagopa_tiago_gazebo and others
 
 source /opt/ros/humble/setup.bash && colcon build
 to build
