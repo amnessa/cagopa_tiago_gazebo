@@ -55,3 +55,48 @@ camera color
     ros2 camera helper - frameid -> rsd455, topic name -> rsd455_img, type-> rgb, use system time-> check
 
 ## Robot
+
+
+
+---
+
+for 2 separate docker containers for sim and ros2
+
+this was the working bashrc modification alias
+
+# Alias to start Isaac Sim 4.5.0 container as the current user
+alias isaac-sim-4.5='docker run --name isaac-sim --entrypoint bash -it --runtime=nvidia --gpus all -e "ACCEPT_EULA=Y" --rm --network=host \
+    -v ~/docker/fastdds/fastdds_discovery_server.xml:/fastdds.xml:ro \
+    -e "FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds.xml" \
+    --ipc=host \
+    -e "ROS_DOMAIN_ID=30" \
+    -e "RMW_IMPLEMENTATION=rmw_fastrtps_cpp" \
+    -e "ROS_DISTRO=humble" \
+    -e "LD_LIBRARY_PATH=/isaac-sim/exts/isaacsim.ros2.bridge/humble/lib" \
+    -e "PRIVACY_CONSENT=Y" \
+    -v ~/docker/isaac-sim/cache/kit:/isaac-sim/kit/cache:rw \
+    -v ~/docker/isaac-sim/cache/ov:/root/.cache/ov:rw \
+    -v ~/docker/isaac-sim/cache/pip:/root/.cache/pip:rw \
+    -v ~/docker/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw \
+    -v ~/docker/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw \
+    -v ~/docker/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw \
+    -v ~/docker/isaac-sim/data:/root/.local/share/ov/data:rw \
+    -v ~/docker/isaac-sim/documents:/root/Documents:rw \
+    nvcr.io/nvidia/isaac-sim:4.5.0'
+
+#xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f /tmp/.docker.xauth nmerge -
+alias ros2-humble='docker run -it --rm --network=host \
+    -v ~/docker/fastdds/fastdds_discovery_server.xml:/fastdds.xml:ro \
+    -e "FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds.xml" \
+    --ipc=host \
+    -e "ROS_DOMAIN_ID=30" \
+    -e "RMW_IMPLEMENTATION=rmw_fastrtps_cpp" \
+    -e "DISPLAY=${DISPLAY}" \
+    -e "QT_X11_NO_MITSHM=1" \
+    -e "XAUTHORITY=/tmp/.docker.xauth" \
+    -v ~/isaac_ws_cago:/ros2_ws \
+    -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+    -v /tmp/.docker.xauth:/tmp/.docker.xauth:rw \
+    -v ~/.ros:/root/.ros:rw \
+    -w /ros2_ws \
+    osrf/ros:humble-desktop bash'
