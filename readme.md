@@ -1,5 +1,9 @@
 Main ros2 folder is tiago_isaac_sim so we build all required packages like ur_config, cagopa_tiago_gazebo and others
 
+before running the ros2-humble docker use this for gui
+
+xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f /tmp/.docker.xauth nmerge -
+
 source /opt/ros/humble/setup.bash && colcon build
 to build
 
