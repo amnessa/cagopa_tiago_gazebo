@@ -112,10 +112,10 @@ def generate_launch_description():
             "fx": 600.0,
             "fy": 600.0,
             "depth_target": 0.8,
-            "k_pixel_gain": 0.6,
-            "k_depth_gain": 0.5,
-            "w1_pixel": 2.0,
-            "w3_depth": 1.0
+            "k_pixel_gain": 2.0,
+            "k_depth_gain": 1.2,
+            "w1_pixel": 3.0,
+            "w3_depth": 1.5
         }]
     )
 

@@ -43,12 +43,12 @@ public:
         fy_ = this->declare_parameter<double>("fy", 600.0);
         depth_default_ = this->declare_parameter<double>("depth_default", 0.8);
         depth_target_  = this->declare_parameter<double>("depth_target", 0.8);
-        k_pixel_ = this->declare_parameter<double>("k_pixel_gain", 0.6);
-        k_depth_ = this->declare_parameter<double>("k_depth_gain", 0.5);
+        k_pixel_ = this->declare_parameter<double>("k_pixel_gain", 1.8);
+        k_depth_ = this->declare_parameter<double>("k_depth_gain", 1.2);
         timeout_sec_ = this->declare_parameter<double>("lost_timeout", 0.5);
         min_manipulability_ = this->declare_parameter<double>("min_manipulability", 0.02);
-        w1_pixel_ = this->declare_parameter<double>("w1_pixel", 1.0);
-        w3_depth_ = this->declare_parameter<double>("w3_depth", 1.0);
+        w1_pixel_ = this->declare_parameter<double>("w1_pixel", 2.5);
+        w3_depth_ = this->declare_parameter<double>("w3_depth", 1.5);
 
         control_timer_ = this->create_wall_timer(
             100ms, std::bind(&UR10EndEffectorControllerNode::control_loop, this));
