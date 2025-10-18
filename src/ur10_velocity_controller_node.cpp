@@ -27,7 +27,11 @@ public:
     UR10EndEffectorControllerNode() : Node("ur10_end_effector_controller_node"), time_(0.0)
     {
         end_effector_velocity_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/end_effector_velocity", 10);
-        joint_velocity_command_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/isaac_joint_commands", 10);
+
+        // REMOVE publisher to /isaac_joint_commands to avoid type conflict
+        // joint_velocity_command_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/isaac_joint_commands", 10);
+
+        // Keep subscription for diagnostics only
         joint_velocity_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
             "/joint_velocities", 10, std::bind(&UR10EndEffectorControllerNode::joint_velocity_callback, this, std::placeholders::_1));
         target_sub_ = this->create_subscription<geometry_msgs::msg::Point>(
@@ -53,13 +57,13 @@ public:
     }
 
 private:
+    // Add back the mode enum
     enum class Mode { SEARCHING, TRACKING };
 
-    // This callback receives the calculated joint velocities from the jacobian node
-    // and forwards them to the robot controller.
     void joint_velocity_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
     {
-        joint_velocity_command_pub_->publish(*msg);
+        // Do not forward to /isaac_joint_commands; just log optionally
+        RCLCPP_DEBUG(this->get_logger(), "Received joint_velocities[%zu]", msg->data.size());
     }
 
     void target_callback(const geometry_msgs::msg::Point::SharedPtr msg)
@@ -135,7 +139,7 @@ private:
     }
 
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr end_effector_velocity_pub_;
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_velocity_command_pub_;
+    // rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_velocity_command_pub_; // REMOVED
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr joint_velocity_sub_;
     rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr target_sub_;
     rclcpp::TimerBase::SharedPtr control_timer_;

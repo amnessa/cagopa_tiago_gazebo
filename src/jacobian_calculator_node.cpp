@@ -25,7 +25,7 @@ public:
 
     void init()
     {
-        // Safe declare helper
+        // Safe declare helpers
         auto ensure_param_str = [this](const std::string & name, const std::string & def) {
             if (!this->has_parameter(name)) this->declare_parameter<std::string>(name, def);
         };
@@ -46,6 +46,8 @@ public:
         ensure_param_double("damping_mu_reference", 0.05);
         ensure_param_double("w2_manipulability", 1.0);
         ensure_param_double("manipulability_gain", 0.4);
+        ensure_param_str("joint_state_topic", "/joint_states");
+        std::string joint_state_topic = this->get_parameter("joint_state_topic").as_string();
 
         planning_group_name_   = this->get_parameter("planning_group").as_string();
         end_effector_link_name_= this->get_parameter("end_effector_link").as_string();
@@ -76,7 +78,7 @@ public:
         }
 
         joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
-            "/isaac_joint_states", 10,
+            joint_state_topic, 10,
             std::bind(&JacobianCalculatorNode::joint_state_callback, this, std::placeholders::_1));
 
         end_effector_velocity_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
@@ -84,9 +86,11 @@ public:
             std::bind(&JacobianCalculatorNode::velocity_callback, this, std::placeholders::_1));
 
         joint_velocity_pub_   = this->create_publisher<std_msgs::msg::Float64MultiArray>("/joint_velocities", 10);
+        // The ONLY publisher to /isaac_joint_commands (sensor_msgs/JointState)
         joint_state_cmd_pub_  = this->create_publisher<sensor_msgs::msg::JointState>("/isaac_joint_commands", 10);
 
-        RCLCPP_INFO(this->get_logger(), "Jacobian calculator ready. control_mode=%s", control_mode_.c_str());
+        RCLCPP_INFO(this->get_logger(), "Jacobian calculator ready. control_mode=%s; joint_state_topic=%s",
+                    control_mode_.c_str(), joint_state_topic.c_str());
     }
 
 private:

@@ -31,11 +31,20 @@ def generate_launch_description():
             description="Name of the semantic description file (SRDF).",
         )
     )
+    # NEW: choose where to read joint states from (sim = /isaac_joint_states)
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "joint_state_topic",
+            default_value="/isaac_joint_states",
+            description="JointState topic to subscribe to (e.g., /isaac_joint_states or /joint_states).",
+        )
+    )
 
     # Get paths
     description_package = LaunchConfiguration("description_package")
     description_file = LaunchConfiguration("description_file")
     semantic_description_file = LaunchConfiguration("semantic_description_file")
+    joint_state_topic = LaunchConfiguration("joint_state_topic")
 
     # Get URDF
     robot_description_content = Command(
@@ -87,7 +96,9 @@ def generate_launch_description():
                         "slowdown_mu_threshold": 0.04,
                         "damping_mu_reference": 0.05,
                         "w2_manipulability": 1.0,
-                        "manipulability_gain": 0.4
+                        "manipulability_gain": 0.4,
+                        # Use the selected topic
+                        "joint_state_topic": joint_state_topic
                     }],
     )
 
